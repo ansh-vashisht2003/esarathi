@@ -1,6 +1,6 @@
 import Traveller from "../models/Traveller.js";
 import bcrypt from "bcryptjs";
-import { sendEmail } from "../utils/sendEmail.js";
+import sendEmail from "../utils/sendEmail.js";
 
 /* =================================================
    FORGOT PASSWORD → SEND OTP

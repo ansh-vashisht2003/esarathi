@@ -7,6 +7,9 @@ import DriverLogin from "./pages/driver/DriverLogin";
 import ForgotPassword from "./pages/traveller/ForgotPassword";
 import TravellerSignup from "./pages/traveller/TravellerSignup";
 import VerifySignupOTP from "./pages/traveller/VerifySignupOTP";
+import DriverSignup from "./pages/driver/DriverSignup";
+import VerifyDriverOTP from "./pages/driver/VerifyDriverOTP";
+
 //import ResetPassword from "./pages/traveller/ResetPassword";
 
 function App() {
@@ -29,6 +32,10 @@ function App() {
 
         {/* Driver auth */}
         <Route path="/driver/login" element={<DriverLogin />} />
+        <Route path="/driver/login" element={<DriverLogin />} />
+<Route path="/driver/signup" element={<DriverSignup />} />
+<Route path="/driver/verify-otp" element={<VerifyDriverOTP />} />
+<Route path="/driver/forgot-password" element={<ForgotPassword />} />
       </Routes>
     </Router>
   );

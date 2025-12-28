@@ -9,18 +9,18 @@ const Splash = () => {
   // Progress animation
   useEffect(() => {
     const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          navigate("/choose-role");
-          return 100;
-        }
-        return prev + 1;
-      });
-    }, 25); // ~2.5s total
+      setProgress((prev) => (prev < 100 ? prev + 1 : prev));
+    }, 25);
 
     return () => clearInterval(interval);
-  }, [navigate]);
+  }, []);
+
+  // Navigate AFTER render when progress completes
+  useEffect(() => {
+    if (progress >= 100) {
+      navigate("/choose-role");
+    }
+  }, [progress, navigate]);
 
   // Circle math
   const radius = 45;
