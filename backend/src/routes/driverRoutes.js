@@ -1,10 +1,9 @@
 import express from "express";
-import upload from "../middleware/upload.js";
 import {
   driverSignup,
   driverLogin,
-  verifyPlate,
 } from "../controllers/driverController.js";
+import upload from "../middleware/upload.js";
 
 const router = express.Router();
 
@@ -31,14 +30,5 @@ router.post("/signup", upload.single("carImage"), driverSignup);
   }
 */
 router.post("/login", driverLogin);
-
-/*
-  VERIFY NUMBER PLATE (AI)
-  POST /api/driver/verify-plate
-  FormData:
-  - driverId
-  - carImage (plate image)
-*/
-router.post("/verify-plate", upload.single("carImage"), verifyPlate);
 
 export default router;

@@ -35,8 +35,7 @@ __pycache__/
 # Jupyter
 .ipynb_checkpoints/
 
-# Environment variables
-.env
+
 
 # Node (frontend)
 node_modules/
