@@ -1,7 +1,9 @@
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
 import cv2
 import easyocr
 import numpy as np
-import sys
 import json
 import re
 
@@ -24,7 +26,7 @@ green_ratio = cv2.countNonZero(mask) / (img.shape[0] * img.shape[1])
 is_green = green_ratio > 0.05
 
 # -------- OCR --------
-reader = easyocr.Reader(['en'], gpu=False)
+reader = easyocr.Reader(['en'], gpu=False, verbose=False)
 results = reader.readtext(img)
 
 plate_text = ""

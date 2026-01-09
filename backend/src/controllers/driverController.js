@@ -2,9 +2,9 @@ import Driver from "../models/Driver.js";
 import bcrypt from "bcryptjs";
 import { checkPlateAI } from "../utils/plateCheck.js";
 
-/* ======================
-   DRIVER SIGNUP (WITH AI PLATE CHECK)
-   ====================== */
+// ======================
+// DRIVER SIGNUP
+// ======================
 export const driverSignup = async (req, res) => {
   try {
     if (!req.file) {
@@ -18,55 +18,50 @@ export const driverSignup = async (req, res) => {
       return res.status(400).json({ message: "Driver already exists" });
     }
 
-    // 🔍 AI Plate Verification
-    const result = await checkPlateAI(req.file.path);
-
-    if (
-      !result.isGreen ||
-      !result.detectedPlate.includes(numberPlate)
-    ) {
-      await Driver.create({
-        name,
-        dob,
-        email,
-        aadhaar,
-        numberPlate,
-        carImage: req.file.path,
-        status: "REJECTED",
-        isApproved: false,
-      });
-
-      return res.status(400).json({
-        success: false,
-        message: "Plate verification failed. Registration rejected.",
-      });
-    }
-
-    // ✅ Plate verified → wait for admin
-    await Driver.create({
+    // ✅ Save driver first
+    const driver = await Driver.create({
       name,
       dob,
       email,
       aadhaar,
       numberPlate,
       carImage: req.file.path,
-      status: "PLATE_VERIFIED",
+      status: "PENDING",
       isApproved: false,
     });
 
+    // ✅ Send response immediately
     res.json({
       success: true,
-      message: "Plate verified. Waiting for admin approval.",
+      message: "Signup successful. Verification in progress.",
     });
-  } catch (error) {
-    console.error("DRIVER SIGNUP ERROR:", error);
+
+    // ✅ Run AI in background (NO await)
+    checkPlateAI(req.file.path)
+      .then(async (result) => {
+        if (
+          result?.isGreen &&
+          result?.detectedPlate?.includes(numberPlate)
+        ) {
+          driver.status = "PLATE_VERIFIED";
+        } else {
+          driver.status = "REJECTED";
+        }
+        await driver.save();
+      })
+      .catch((err) => {
+        console.error("AI error (ignored):", err.message);
+      });
+
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Signup failed" });
   }
 };
 
-/* ======================
-   DRIVER LOGIN
-   ====================== */
+// ======================
+// DRIVER LOGIN
+// ======================
 export const driverLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -76,17 +71,19 @@ export const driverLogin = async (req, res) => {
       return res.status(404).json({ message: "Driver not found" });
     }
 
+    // ✅ Check admin approval + status
     if (!driver.isApproved || driver.status !== "APPROVED") {
       return res
         .status(403)
-        .json({ message: "Admin approval pending" });
+        .json({ message: "Account not approved by admin yet" });
     }
 
-    const isMatch = await bcrypt.compare(password, driver.password);
-    if (!isMatch) {
+    const ok = await bcrypt.compare(password, driver.password);
+    if (!ok) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    // ✅ Return useful data
     res.json({
       success: true,
       message: "Login successful",
@@ -94,10 +91,11 @@ export const driverLogin = async (req, res) => {
         id: driver._id,
         name: driver.name,
         email: driver.email,
+        status: driver.status,
       },
     });
-  } catch (error) {
-    console.error("DRIVER LOGIN ERROR:", error);
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
     res.status(500).json({ message: "Login failed" });
   }
 };

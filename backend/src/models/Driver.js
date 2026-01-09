@@ -13,7 +13,7 @@ const driverSchema = new mongoose.Schema({
   isApproved: { type: Boolean, default: false },
   status: {
     type: String,
-    enum: ["PENDING", "APPROVED", "REJECTED"],
+    enum: ["PENDING", "PLATE_VERIFIED", "APPROVED", "REJECTED"],
     default: "PENDING",
   },
 
