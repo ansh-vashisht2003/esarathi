@@ -1,65 +1,74 @@
 import Driver from "../models/Driver.js";
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import sendEmail from "../utils/sendEmail.js";
 
 /* ======================
-   ADMIN APPROVE DRIVER
+   GET PENDING DRIVERS
    ====================== */
-export const approveDriver = async (req, res) => {
+export const getPendingDrivers = async (req, res) => {
   try {
-    console.log("🔥 ADMIN APPROVE API HIT");
+    const drivers = await Driver.find({
+      status: "PENDING",
+      isApproved: { $ne: true },
+    }).sort({ createdAt: -1 });
 
-    const { driverId } = req.params;
-    const { adminPassword } = req.body;
+    res.status(200).json(drivers);
+  } catch (error) {
+    console.error("Error fetching pending drivers:", error);
+    res.status(500).json({ message: "Failed to fetch drivers" });
+  }
+};
 
-    if (adminPassword !== process.env.ADMIN_PASSWORD) {
-      return res.status(401).json({ message: "Invalid admin password" });
-    }
+/* ======================
+   APPROVE / REJECT DRIVER
+   ====================== */
+export const verifyDriver = async (req, res) => {
+  try {
+    const { driverId, action } = req.body;
 
     const driver = await Driver.findById(driverId);
-
-    // ✅ ONLY plate-verified drivers can be approved
-    if (!driver || driver.status !== "PLATE_VERIFIED") {
-      return res
-        .status(400)
-        .json({ message: "Driver not ready for approval" });
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
     }
 
-    const plainPassword = crypto.randomBytes(6).toString("hex");
+    // ❌ REJECT
+    if (action === "REJECT") {
+      driver.status = "REJECTED";
+      driver.isApproved = false;
+      await driver.save();
+
+      return res.status(200).json({ message: "Driver rejected successfully" });
+    }
+
+    // ✅ APPROVE (FIXED PASSWORD)
+    const plainPassword = "Admin@1234";
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
     driver.password = hashedPassword;
-    driver.isApproved = true;
     driver.status = "APPROVED";
+    driver.isApproved = true;
 
     await driver.save();
 
-    console.log("📧 SENDING EMAIL");
     await sendEmail(
       driver.email,
-      "E-Sarathi Driver Account Approved",
-      `
-Hello ${driver.name},
+      "E-Sarathi Driver Approved",
+      `Hello ${driver.name},
 
-Your driver account has been approved by admin 🎉
+Your driver account has been approved 🎉
 
-Login Details:
+Login Credentials:
 Email: ${driver.email}
-Password: ${plainPassword}
+Password: Admin@1234
 
-Please change your password after login.
+⚠ Please change your password after first login.
 
-– Team E-Sarathi
-      `
+– Team E-Sarathi`
     );
 
-    res.json({
-      success: true,
-      message: "Driver approved and email sent",
-    });
+    res.status(200).json({ message: "Driver approved successfully" });
   } catch (error) {
-    console.error("ADMIN APPROVAL ERROR:", error);
+    console.error("Driver verification error:", error);
     res.status(500).json({ message: "Approval failed" });
   }
 };

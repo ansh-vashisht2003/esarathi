@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 
 import travellerRoutes from "./routes/travellerRoutes.js";
 import driverRoutes from "./routes/driverRoutes.js";
@@ -11,8 +12,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded images
-app.use("/uploads", express.static("uploads"));
+// ✅ Serve uploaded images (SAFE & CORRECT)
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"))
+);
 
 // Routes
 app.use("/api/traveller", travellerRoutes);

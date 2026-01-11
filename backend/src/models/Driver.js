@@ -9,11 +9,11 @@ const driverSchema = new mongoose.Schema({
 
   carImage: { type: String, required: true },
 
-  password: { type: String },
+  password: { type: String, required:false },
   isApproved: { type: Boolean, default: false },
   status: {
     type: String,
-    enum: ["PENDING", "PLATE_VERIFIED", "APPROVED", "REJECTED"],
+    enum: ["PENDING", "APPROVED", "REJECTED"],
     default: "PENDING",
   },
 

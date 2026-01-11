@@ -9,7 +9,9 @@ import TravellerSignup from "./pages/traveller/TravellerSignup";
 import VerifySignupOTP from "./pages/traveller/VerifySignupOTP";
 import DriverSignup from "./pages/driver/DriverSignup";
 import VerifyDriverOTP from "./pages/driver/VerifyDriverOTP";
-
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AddDriver from "./pages/admin/AddDriver";
 //import ResetPassword from "./pages/traveller/ResetPassword";
 
 function App() {
@@ -36,6 +38,11 @@ function App() {
 <Route path="/driver/signup" element={<DriverSignup />} />
 <Route path="/driver/verify-otp" element={<VerifyDriverOTP />} />
 <Route path="/driver/forgot-password" element={<ForgotPassword />} />
+
+        {/* Admin auth */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/add-driver" element={<AddDriver />} />
       </Routes>
     </Router>
   );

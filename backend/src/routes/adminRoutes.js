@@ -1,9 +1,12 @@
 import express from "express";
-import { approveDriver } from "../controllers/adminController.js";
+import {
+  getPendingDrivers,
+  verifyDriver,
+} from "../controllers/adminController.js";
 
 const router = express.Router();
 
-// ADMIN APPROVES DRIVER (MANUAL APPROVAL)
-router.put("/approve-driver/:driverId", approveDriver);
+router.get("/drivers/pending", getPendingDrivers);
+router.post("/drivers/verify", verifyDriver);
 
 export default router;
