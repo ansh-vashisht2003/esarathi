@@ -13,6 +13,7 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AddDriver from "./pages/admin/AddDriver";
 import TravellerDashboard from "./pages/traveller/TravellerDashbaord";
+import TravellerBookSolo from "./pages/traveller/TravellerBookSolo";
 //import ResetPassword from "./pages/traveller/ResetPassword";
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
         <Route path="/traveller/signup" element={<TravellerSignup />} />
 <Route path="/traveller/verify-otp" element={<VerifySignupOTP />} />
         <Route path="/traveller/dashboard" element={<TravellerDashboard />} />
+        <Route path="/traveller/book-solo" element={<TravellerBookSolo />} />
 
         
 
