@@ -12,6 +12,7 @@ import VerifyDriverOTP from "./pages/driver/VerifyDriverOTP";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AddDriver from "./pages/admin/AddDriver";
+import TravellerDashboard from "./pages/traveller/TravellerDashbaord";
 //import ResetPassword from "./pages/traveller/ResetPassword";
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
         <Route path="/traveller/forgot-password" element={<ForgotPassword />} />
         <Route path="/traveller/signup" element={<TravellerSignup />} />
 <Route path="/traveller/verify-otp" element={<VerifySignupOTP />} />
+        <Route path="/traveller/dashboard" element={<TravellerDashboard />} />
 
         
 
