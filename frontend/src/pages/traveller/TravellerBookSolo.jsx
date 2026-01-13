@@ -26,7 +26,7 @@ const redIcon = new L.Icon({
 });
 
 /* =========================
-   Auto Fit Bounds
+   Fit Map to Route
 ========================= */
 const FitBounds = ({ pickup, drop }) => {
   const map = useMap();
@@ -50,23 +50,26 @@ const TravellerBookSolo = () => {
   const traveller = JSON.parse(localStorage.getItem("traveller"));
   const travellerName = traveller?.name || "Traveller";
 
+  // Pickup
   const [pickupText, setPickupText] = useState("");
   const [pickupCoords, setPickupCoords] = useState(null);
   const [pickupResults, setPickupResults] = useState([]);
 
+  // Drop
   const [dropText, setDropText] = useState("");
   const [dropCoords, setDropCoords] = useState(null);
   const [dropResults, setDropResults] = useState([]);
 
+  // Route
   const [route, setRoute] = useState([]);
 
   /* =========================
-     Reverse Geocode
+     Reverse Geocode (India)
   ========================= */
   const reverseGeocode = async (lat, lng) => {
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en&countrycodes=in`
       );
       const data = await res.json();
       setPickupText(data.display_name || "Current Location");
@@ -83,13 +86,13 @@ const TravellerBookSolo = () => {
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
 
-        // Ignore IP-based bad locations
+        // Ignore poor accuracy (IP-based)
         if (accuracy > 1500) return;
 
         setPickupCoords({ lat: latitude, lng: longitude });
         reverseGeocode(latitude, longitude);
       },
-      () => alert("Enable location & GPS"),
+      () => alert("Enable GPS & location access"),
       {
         enableHighAccuracy: true,
         maximumAge: 0,
@@ -101,14 +104,19 @@ const TravellerBookSolo = () => {
   }, []);
 
   /* =========================
-     BETTER SEARCH (PHOTON)
+     INDIA-ONLY LOCATION SEARCH
   ========================= */
   const searchLocation = async (query, setter) => {
     if (!query || query.length < 3) return;
 
-    let url = `https://photon.komoot.io/api/?q=${query}&limit=6`;
+    // India bounding box
+    const INDIA_BBOX = "68.1113787,6.5546079,97.395561,35.6745457";
 
-    // Bias search near user
+    let url = `https://photon.komoot.io/api/?q=${encodeURIComponent(
+      query
+    )}&limit=6&bbox=${INDIA_BBOX}`;
+
+    // Bias search near pickup
     if (pickupCoords) {
       url += `&lat=${pickupCoords.lat}&lon=${pickupCoords.lng}`;
     }
@@ -116,17 +124,25 @@ const TravellerBookSolo = () => {
     const res = await fetch(url);
     const data = await res.json();
 
-    const results = data.features.map((f) => ({
-      place_id: f.properties.osm_id,
-      display_name: [
-        f.properties.name,
-        f.properties.city || f.properties.state,
-      ]
-        .filter(Boolean)
-        .join(", "),
-      lat: f.geometry.coordinates[1],
-      lon: f.geometry.coordinates[0],
-    }));
+    const results = data.features
+      .filter(
+        (f) =>
+          f.properties.country === "India" ||
+          f.properties.countrycode === "IN"
+      )
+      .map((f) => ({
+        place_id: f.properties.osm_id,
+        display_name: [
+          f.properties.name,
+          f.properties.city ||
+            f.properties.district ||
+            f.properties.state,
+        ]
+          .filter(Boolean)
+          .join(", "),
+        lat: f.geometry.coordinates[1],
+        lon: f.geometry.coordinates[0],
+      }));
 
     setter(results);
   };
