@@ -265,11 +265,11 @@ const TravellerBookSolo = () => {
           borderTopRightRadius: 24,
           padding: 20,
         }}
-      >
+      ><br></br>
         <h2 style={{ color: "#064b28", marginBottom: 12 }}>
           Book a Solo Ride
         </h2>
-
+<br></br>
         {/* PICKUP */}
         <input
           value={pickupText}

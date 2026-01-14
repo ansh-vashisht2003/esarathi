@@ -6,6 +6,7 @@ import {
   resetPassword,
   loginTraveller,   // ✅ ADD THIS
 } from "../controllers/travellerAuthController.js";
+import { sendContactMail } from "../utils/contactController.js";
 
 const router = express.Router();
 
@@ -14,5 +15,5 @@ router.post("/verify-signup-otp", verifySignupOTP);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 router.post("/login", loginTraveller); // ✅ ADD THIS
-
+router.post("/contact", sendContactMail);
 export default router;
