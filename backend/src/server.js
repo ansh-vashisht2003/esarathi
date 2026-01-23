@@ -6,26 +6,40 @@ import app from "./app.js";
 
 dotenv.config(); // ✅ load env first
 
-/* ===== CONNECT DB ===== */
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => {
-    console.error("❌ MongoDB error:", err);
+/* ===============================
+   CONNECT DATABASE
+================================ */
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ MongoDB connected");
+  } catch (err) {
+    console.error("❌ MongoDB connection failed:", err.message);
     process.exit(1);
-  });
+  }
+};
 
-/* ===== CREATE HTTP SERVER ===== */
+await connectDB();
+
+/* ===============================
+   CREATE HTTP SERVER
+================================ */
 const server = http.createServer(app);
 
-/* ===== SOCKET.IO SETUP ===== */
+/* ===============================
+   SOCKET.IO SETUP
+================================ */
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // frontend URL
+    origin: [
+      "http://localhost:5173", // frontend dev
+      "http://localhost:3000",
+    ],
     methods: ["GET", "POST"],
   },
 });
 
+// 🔥 Socket Logic
 io.on("connection", (socket) => {
   console.log("🟢 Socket connected:", socket.id);
 
@@ -43,8 +57,11 @@ io.on("connection", (socket) => {
   });
 });
 
-/* ===== START SERVER ===== */
+/* ===============================
+   START SERVER
+================================ */
 const PORT = process.env.PORT || 5000;
+
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

@@ -7,9 +7,16 @@ const driverSchema = new mongoose.Schema({
   aadhaar: { type: String, required: true },
   numberPlate: { type: String, required: true },
 
+  vehicleType: { 
+    type: String, 
+    enum: ["Bike", "Car", "Auto", "SUV", "Truck"], 
+    required: true 
+  },
+
+  profilePic: { type: String, required: true }, // ✅ new
   carImage: { type: String, required: true },
 
-  password: { type: String, required:false },
+  password: { type: String, required: false },
   isApproved: { type: Boolean, default: false },
   status: {
     type: String,

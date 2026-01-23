@@ -148,7 +148,7 @@ const TravellerProfile = () => {
               <button
                 onClick={() => {
                   localStorage.removeItem("traveller");
-                  navigate("/login");
+                  navigate("/choose-role");
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
               >

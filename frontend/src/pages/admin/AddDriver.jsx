@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+const API_BASE = "http://localhost:5000";
+
 const AddDriver = () => {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,7 +14,7 @@ const AddDriver = () => {
 
   const fetchDrivers = async () => {
     try {
-      const res = await axios.get("/api/admin/drivers/pending");
+      const res = await axios.get(`${API_BASE}/api/admin/drivers/pending`);
       setDrivers(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error("Failed to fetch drivers:", error);
@@ -26,12 +28,11 @@ const AddDriver = () => {
     try {
       setActionLoading(driverId + action);
 
-      await axios.post("/api/admin/drivers/verify", {
+      await axios.post(`${API_BASE}/api/admin/drivers/verify`, {
         driverId,
         action,
       });
 
-      // Refresh list after approve/reject
       fetchDrivers();
     } catch (error) {
       console.error("Action failed:", error);
@@ -52,7 +53,7 @@ const AddDriver = () => {
   if (drivers.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-green-900 text-white">
-        No drivers pending approval
+        No drivers pending approval 🚗
       </div>
     );
   }
@@ -60,56 +61,82 @@ const AddDriver = () => {
   return (
     <div className="min-h-screen bg-green-900 p-10 text-white">
       <h2 className="text-3xl font-bold mb-10 text-center">
-        Driver Approval
+        Driver Approval Panel
       </h2>
 
-      {drivers.map((driver) => (
-        <div
-          key={driver._id}
-          className="bg-white text-black rounded-xl p-6 mb-10 max-w-4xl mx-auto"
-        >
-          <h3 className="text-xl font-bold mb-2">{driver.name}</h3>
-          <p><b>Email:</b> {driver.email}</p>
-          <p><b>Aadhaar:</b> {driver.aadhaar}</p>
+      {drivers.map((driver) => {
+        const profilePic = driver.profilePic
+          ? `${API_BASE}/driver_pic/${driver.profilePic}`
+          : "https://ui-avatars.com/api/?name=Driver&background=22c55e&color=fff";
 
-          {/* IMAGE + NUMBER PLATE (COLUMN WISE) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-            {/* LEFT: CAR IMAGE */}
-            <img
-              src={`http://localhost:5000/${driver.carImage.replace(/\\/g, "/")}`}
-              alt="Car"
-              className="rounded-lg w-full h-48 object-cover border"
-            />
+        const carImage = `${API_BASE}/driver_pic/${driver.carImage}`;
 
-            {/* RIGHT: NUMBER PLATE */}
-            <div className="flex items-center justify-center">
-              <p className="text-xl font-semibold">
-                Number Plate: <br />
-                <span className="text-green-700">{driver.numberPlate}</span>
+        return (
+          <div
+            key={driver._id}
+            className="bg-white text-black rounded-2xl p-6 mb-10 max-w-5xl mx-auto shadow-lg"
+          >
+            {/* HEADER */}
+            <div className="flex items-center gap-6 mb-6">
+              <img
+                src={profilePic}
+                alt="Driver"
+                className="w-20 h-20 rounded-full object-cover border-4 border-green-500"
+              />
+
+              <div>
+                <h3 className="text-2xl font-bold">{driver.name}</h3>
+                <p className="text-gray-600">{driver.email}</p>
+                <p className="text-sm text-green-700 font-semibold">
+                  Vehicle Type: {driver.vehicleType}
+                </p>
+              </div>
+            </div>
+
+            {/* DRIVER DETAILS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
+              <p><b>DOB:</b> {new Date(driver.dob).toLocaleDateString()}</p>
+              <p><b>Aadhaar:</b> {driver.aadhaar}</p>
+              <p><b>Number Plate:</b> {driver.numberPlate}</p>
+              <p>
+                <b>Status:</b>{" "}
+                <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-700 font-semibold">
+                  {driver.status}
+                </span>
               </p>
             </div>
-          </div>
 
-          {/* ACTION BUTTONS */}
-          <div className="flex justify-end gap-4 mt-6">
-            <button
-              onClick={() => handleAction(driver._id, "REJECT")}
-              disabled={actionLoading === driver._id + "REJECT"}
-              className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-            >
-              Reject
-            </button>
+            {/* CAR IMAGE */}
+            <div className="mt-6">
+              <h4 className="font-semibold mb-2">Car Image</h4>
+              <img
+                src={carImage}
+                alt="Car"
+                className="rounded-xl w-full max-h-64 object-cover border shadow"
+              />
+            </div>
 
-            <button
-              onClick={() => handleAction(driver._id, "APPROVE")}
-              disabled={actionLoading === driver._id + "APPROVE"}
-              className="px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-            >
-              Accept
-            </button>
+            {/* ACTION BUTTONS */}
+            <div className="flex justify-end gap-4 mt-8">
+              <button
+                onClick={() => handleAction(driver._id, "REJECT")}
+                disabled={actionLoading === driver._id + "REJECT"}
+                className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                Reject
+              </button>
+
+              <button
+                onClick={() => handleAction(driver._id, "APPROVE")}
+                disabled={actionLoading === driver._id + "APPROVE"}
+                className="px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                Approve
+              </button>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

@@ -12,19 +12,25 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/* ✅ Serve uploaded images */
-app.use(
-  "/uploads",
-  express.static(path.join(process.cwd(), "uploads"))
-);
+const ROOT = process.cwd();
 
-/* ✅ Serve traveller profile pictures */
-app.use(
-  "/traveller_pic",
-  express.static(path.join(process.cwd(), "traveller_pic"))
-);
+/* ==============================
+   STATIC FILES (IMAGES)
+================================ */
 
-/* ✅ API Routes */
+// General uploads (if any)
+app.use("/uploads", express.static(path.join(ROOT, "uploads")));
+
+// Traveller profile pictures
+app.use("/traveller_pic", express.static(path.join(ROOT, "traveller_pic")));
+
+// Driver images (profile pic + car image)
+app.use("/driver_pic", express.static(path.join(ROOT, "driver_pic")));
+
+/* ==============================
+   API ROUTES
+================================ */
+
 app.use("/api/traveller", travellerRoutes);
 app.use("/api/driver", driverRoutes);
 app.use("/api/admin", adminRoutes);

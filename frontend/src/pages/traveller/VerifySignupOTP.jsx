@@ -9,7 +9,7 @@ const VerifySignupOTP = () => {
 
   const verifyOTP = async () => {
     const res = await fetch(
-      "http://localhost:5000/api/traveller/verify-signup-otp",
+      "http://localhost:5000/api/traveller/verify-otp",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
