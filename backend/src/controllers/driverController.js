@@ -1,71 +1,53 @@
 import Driver from "../models/Driver.js";
-import bcrypt from "bcryptjs";
-import { checkPlateAI } from "../utils/plateCheck.js";
 
 // ======================
-// DRIVER SIGNUP (PROFILE PIC + CAR IMAGE + VEHICLE TYPE + AI)
+// DRIVER SIGNUP (ALWAYS PENDING)
 // ======================
 export const driverSignup = async (req, res) => {
   try {
-    const { name, dob, email, aadhaar, numberPlate, vehicleType } = req.body;
+    const { name, dob, email, phone, aadhaar, numberPlate, vehicleType } = req.body;
 
-    // ✅ Validate files
-    if (!req.files?.profilePic || !req.files?.carImage) {
-      return res.status(400).json({
-        message: "Profile picture and car image are required",
-      });
+    if (!req.files?.carImage) {
+      return res.status(400).json({ message: "Vehicle image is required" });
     }
 
-    // ✅ Check existing driver
-    const exists = await Driver.findOne({ email });
-    if (exists) {
+    const existing = await Driver.findOne({ email });
+    if (existing) {
       return res.status(400).json({ message: "Driver already exists" });
     }
 
-    // ✅ Save driver first (fast response)
+    // ✅ Age validation (>=18)
+    const age = Math.floor(
+      (Date.now() - new Date(dob)) / (1000 * 60 * 60 * 24 * 365.25)
+    );
+
+    if (age < 18) {
+      return res.status(400).json({ message: "Driver must be at least 18 years old" });
+    }
+
     const driver = await Driver.create({
       name,
       dob,
       email,
+      phone,
       aadhaar,
       numberPlate,
       vehicleType,
-
-      profilePic: req.files.profilePic[0].filename,
+      profilePic: req.files.profilePic?.[0]?.filename,
       carImage: req.files.carImage[0].filename,
-
-      status: "PENDING",
+      status: "PENDING",     // ✅ ALWAYS PENDING
       isApproved: false,
     });
 
-    // ✅ Respond immediately (no waiting for AI)
     res.json({
       success: true,
-      message: "Signup successful. Plate verification in progress 🚗",
+      message: "Driver registered successfully. Waiting for admin approval 🚗",
+      driver,
     });
-
-    // ======================
-    // AI NUMBER PLATE CHECK (BACKGROUND)
-    // ======================
-    checkPlateAI(req.files.carImage[0].path)
-      .then(async (result) => {
-        if (
-          result?.isGreen &&
-          result?.detectedPlate?.includes(numberPlate)
-        ) {
-          driver.status = "PLATE_VERIFIED";
-        } else {
-          driver.status = "REJECTED";
-        }
-        await driver.save();
-      })
-      .catch((err) => {
-        console.error("AI error:", err.message);
-      });
 
   } catch (err) {
     console.error("Driver signup error:", err);
-    res.status(500).json({ message: "Signup failed" });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -74,39 +56,21 @@ export const driverSignup = async (req, res) => {
 // ======================
 export const driverLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email } = req.body;
 
     const driver = await Driver.findOne({ email });
-    if (!driver) {
-      return res.status(404).json({ message: "Driver not found" });
-    }
+    if (!driver) return res.status(404).json({ message: "Driver not found" });
 
-    // ✅ Check approval + AI status
-    if (!driver.isApproved || driver.status !== "APPROVED") {
-      return res.status(403).json({
-        message: "Account not approved by admin yet",
-      });
-    }
-
-    const ok = await bcrypt.compare(password, driver.password);
-    if (!ok) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    if (driver.status !== "APPROVED") {
+      return res.status(403).json({ message: "Account not approved yet" });
     }
 
     res.json({
       success: true,
-      message: "Login successful ✅",
-      driver: {
-        id: driver._id,
-        name: driver.name,
-        email: driver.email,
-        vehicleType: driver.vehicleType,
-        profilePic: driver.profilePic,
-        status: driver.status,
-      },
+      driver,
     });
+
   } catch (err) {
-    console.error("LOGIN ERROR:", err);
     res.status(500).json({ message: "Login failed" });
   }
 };

@@ -18,14 +18,14 @@ const ROOT = process.cwd();
    STATIC FILES (IMAGES)
 ================================ */
 
-// General uploads (if any)
-app.use("/uploads", express.static(path.join(ROOT, "uploads")));
-
 // Traveller profile pictures
 app.use("/traveller_pic", express.static(path.join(ROOT, "traveller_pic")));
 
 // Driver images (profile pic + car image)
 app.use("/driver_pic", express.static(path.join(ROOT, "driver_pic")));
+
+// Optional uploads folder
+app.use("/uploads", express.static(path.join(ROOT, "uploads")));
 
 /* ==============================
    API ROUTES

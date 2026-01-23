@@ -4,19 +4,20 @@ const driverSchema = new mongoose.Schema({
   name: { type: String, required: true },
   dob: { type: Date, required: true },
   email: { type: String, required: true, unique: true },
+  phone: { type: String, required: true },
   aadhaar: { type: String, required: true },
   numberPlate: { type: String, required: true },
 
-  vehicleType: { 
-    type: String, 
-    enum: ["Bike", "Car", "Auto", "SUV", "Truck"], 
-    required: true 
+  vehicleType: {
+    type: String,
+    enum: ["Bike", "Car", "Auto", "SUV", "Truck"],
+    required: true,
   },
 
-  profilePic: { type: String, required: true }, // ✅ new
+  profilePic: { type: String },
   carImage: { type: String, required: true },
 
-  password: { type: String, required: false },
+  password: { type: String },
   isApproved: { type: Boolean, default: false },
   status: {
     type: String,
@@ -27,4 +28,6 @@ const driverSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.model("Driver", driverSchema);
+const Driver = mongoose.model("Driver", driverSchema);
+
+export default Driver; // ✅ IMPORTANT

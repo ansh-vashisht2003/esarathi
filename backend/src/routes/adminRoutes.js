@@ -1,8 +1,5 @@
 import express from "express";
-import {
-  getPendingDrivers,
-  verifyDriver,
-} from "../controllers/adminController.js";
+import { getPendingDrivers, verifyDriver } from "../controllers/adminController.js";
 
 const router = express.Router();
 
