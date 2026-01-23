@@ -12,13 +12,19 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Serve uploaded images (SAFE & CORRECT)
+/* ✅ Serve uploaded images */
 app.use(
   "/uploads",
   express.static(path.join(process.cwd(), "uploads"))
 );
 
-// Routes
+/* ✅ Serve traveller profile pictures */
+app.use(
+  "/traveller_pic",
+  express.static(path.join(process.cwd(), "traveller_pic"))
+);
+
+/* ✅ API Routes */
 app.use("/api/traveller", travellerRoutes);
 app.use("/api/driver", driverRoutes);
 app.use("/api/admin", adminRoutes);

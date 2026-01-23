@@ -1,11 +1,10 @@
-import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import http from "http";
 import { Server } from "socket.io";
 import app from "./app.js";
 
-dotenv.config(); // ✅ FIRST
+dotenv.config(); // ✅ load env first
 
 /* ===== CONNECT DB ===== */
 mongoose
@@ -15,14 +14,6 @@ mongoose
     console.error("❌ MongoDB error:", err);
     process.exit(1);
   });
-
-/* ===== DEBUG EMAIL ===== */
-console.log("EMAIL_USER =", process.env.EMAIL_USER);
-console.log("EMAIL_PASS =", process.env.EMAIL_PASS);
-if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-  console.error("❌ EMAIL ENV NOT LOADED");
-  process.exit(1);
-}
 
 /* ===== CREATE HTTP SERVER ===== */
 const server = http.createServer(app);
@@ -38,13 +29,11 @@ const io = new Server(server, {
 io.on("connection", (socket) => {
   console.log("🟢 Socket connected:", socket.id);
 
-  // Join ride room
   socket.on("join-ride", (rideId) => {
     socket.join(rideId);
     console.log(`🚗 Socket ${socket.id} joined ride ${rideId}`);
   });
 
-  // Chat message
   socket.on("send-message", ({ rideId, message }) => {
     socket.to(rideId).emit("receive-message", message);
   });

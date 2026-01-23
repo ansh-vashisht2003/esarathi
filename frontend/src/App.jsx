@@ -16,6 +16,7 @@ import TravellerDashboard from "./pages/traveller/TravellerDashbaord";
 import TravellerBookSolo from "./pages/traveller/TravellerBookSolo";
 import TravellerContact from "./pages/traveller/Contact";
 import ContactSuccess from "./pages/traveller/ContactSuccess";
+import TravellerProfile from "./pages/traveller/TravellerProfile";
 //import ResetPassword from "./pages/traveller/ResetPassword";
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
         <Route path="/traveller/book-solo" element={<TravellerBookSolo />} />
         <Route path="/traveller/contact" element={<TravellerContact />} />
         <Route path="/contact-success" element={<ContactSuccess />} />
+        <Route path="/traveller/profile" element={<TravellerProfile />} />
 
         
 

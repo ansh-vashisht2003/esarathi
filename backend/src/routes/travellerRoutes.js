@@ -1,19 +1,16 @@
 import express from "express";
+import upload from "../middleware/travellerUpload.js";
 import {
-  signupTraveller,
-  verifySignupOTP,
-  forgotPassword,
-  resetPassword,
-  loginTraveller,   // ✅ ADD THIS
-} from "../controllers/travellerAuthController.js";
-import { sendContactMail } from "../utils/contactController.js";
+  uploadProfilePicByEmail,
+  changePasswordByEmail,
+} from "../controllers/travellerController.js";
 
 const router = express.Router();
 
-router.post("/signup", signupTraveller);
-router.post("/verify-signup-otp", verifySignupOTP);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
-router.post("/login", loginTraveller); // ✅ ADD THIS
-router.post("/contact", sendContactMail);
+// ✅ Upload profile pic using email
+router.put("/profile-pic/:email", upload.single("profilePic"), uploadProfilePicByEmail);
+
+// ✅ Change password using email
+router.put("/change-password/:email", changePasswordByEmail);
+
 export default router;
