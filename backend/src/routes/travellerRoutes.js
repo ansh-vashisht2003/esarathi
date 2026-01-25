@@ -10,10 +10,11 @@ import {
   resetPassword,
 } from "../controllers/travellerAuthController.js";
 
-// ✅ PROFILE CONTROLLER
+// ✅ PROFILE + CONTACT CONTROLLER
 import {
   uploadProfilePicByEmail,
   changePasswordByEmail,
+  contactTraveller, // ✅ ADD THIS LINE
 } from "../controllers/travellerController.js";
 
 const router = express.Router();
@@ -36,6 +37,12 @@ router.post("/forgot-password", forgotPassword);
 
 // reset password
 router.post("/reset-password", resetPassword);
+
+/* ======================
+   CONTACT ROUTE
+====================== */
+
+router.post("/contact", contactTraveller); // ✅ NOW IT WORKS
 
 /* ======================
    PROFILE ROUTES
