@@ -17,6 +17,8 @@ import TravellerBookSolo from "./pages/traveller/TravellerBookSolo";
 import TravellerContact from "./pages/traveller/Contact";
 import ContactSuccess from "./pages/traveller/ContactSuccess";
 import TravellerProfile from "./pages/traveller/TravellerProfile";
+import DriverDashboard from "./pages/driver/DriverDashboard";
+import DriverProfile from "./pages/driver/DriverProfile";
 //import ResetPassword from "./pages/traveller/ResetPassword";
 
 function App() {
@@ -48,6 +50,8 @@ function App() {
 <Route path="/driver/signup" element={<DriverSignup />} />
 <Route path="/driver/verify-otp" element={<VerifyDriverOTP />} />
 <Route path="/driver/forgot-password" element={<ForgotPassword />} />
+        <Route path="/driver/dashboard" element={<DriverDashboard />} />
+        <Route path="/driver/profile" element={<DriverProfile />} />
 
         {/* Admin auth */}
         <Route path="/admin/login" element={<AdminLogin />} />

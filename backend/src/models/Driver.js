@@ -17,6 +17,11 @@ const driverSchema = new mongoose.Schema({
   profilePic: { type: String },
   carImage: { type: String, required: true },
 
+  // ✅ DAILY SELFIE SYSTEM
+  selfieImage: { type: String }, 
+  lastSelfieDate: { type: Date },
+  missedSelfieCount: { type: Number, default: 0 },
+
   password: { type: String },
   isApproved: { type: Boolean, default: false },
   status: {
@@ -30,4 +35,4 @@ const driverSchema = new mongoose.Schema({
 
 const Driver = mongoose.model("Driver", driverSchema);
 
-export default Driver; // ✅ IMPORTANT
+export default Driver;
