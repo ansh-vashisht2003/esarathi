@@ -20,7 +20,8 @@ import TravellerProfile from "./pages/traveller/TravellerProfile";
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverProfile from "./pages/driver/DriverProfile";
 //import ResetPassword from "./pages/traveller/ResetPassword";
-
+import DriverSupport from "./pages/driver/DriverSupport";
+import DriverSoloTrips from "./pages/driver/DriverSoloTrips";
 function App() {
   return (
     <Router>
@@ -52,6 +53,8 @@ function App() {
 <Route path="/driver/forgot-password" element={<ForgotPassword />} />
         <Route path="/driver/dashboard" element={<DriverDashboard />} />
         <Route path="/driver/profile" element={<DriverProfile />} />
+        <Route path="/driver/support" element={<DriverSupport />} />
+        <Route path="/driver/solo-trips" element={<DriverSoloTrips />} />
 
         {/* Admin auth */}
         <Route path="/admin/login" element={<AdminLogin />} />

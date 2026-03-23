@@ -1,362 +1,373 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  MapContainer,
-  TileLayer,
+  GoogleMap,
   Marker,
-  Polyline,
-  useMap,
-} from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+  DirectionsRenderer,
+  Autocomplete,
+  TrafficLayer,
+  useJsApiLoader
+} from "@react-google-maps/api";
+
 import TravellerNavbar from "../components/TravellerNavbar";
+import io from "socket.io-client";
 
-/* =========================
-   Marker Icons
-========================= */
-const greenIcon = new L.Icon({
-  iconUrl: "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-});
+const socket = io("http://localhost:5000");
+const API = "http://localhost:5000/api/rides";
 
-const redIcon = new L.Icon({
-  iconUrl: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-});
+const GOOGLE_KEY = "AIzaSyDwaSxjJlJvRtRfLCUk0Bw4BLy3QUJk4KI";
 
-/* =========================
-   Fit Map Bounds
-========================= */
-const FitBounds = ({ pickup, drop }) => {
-  const map = useMap();
-
-  useEffect(() => {
-    if (pickup && drop) {
-      map.fitBounds(
-        [
-          [pickup.lat, pickup.lng],
-          [drop.lat, drop.lng],
-        ],
-        { padding: [50, 50] }
-      );
-    }
-  }, [pickup, drop, map]);
-
-  return null;
+const mapContainerStyle = {
+  width: "100%",
+  height: "45vh"
 };
 
-/* =========================
-   Suggestion Item
-========================= */
-const SuggestionItem = ({ icon, text, onClick }) => (
-  <div
-    onClick={onClick}
-    style={{
-      padding: "12px",
-      display: "flex",
-      gap: 10,
-      cursor: "pointer",
-      borderBottom: "1px solid #eee",
-      fontSize: 14,
-      alignItems: "center",
-      background: "#fff",
-    }}
-  >
-    <span style={{ fontSize: 18 }}>{icon}</span>
-    <span>{text}</span>
-  </div>
-);
+const vehicleRates = {
+  motorcycle: 6,
+  mini: 10,
+  suv: 15,
+  xuv: 18
+};
 
-const TravellerBookSolo = () => {
+const vehicles = [
+  { id: "motorcycle", name: "Motorcycle", icon: "🏍" },
+  { id: "mini", name: "Car Mini", icon: "🚗" },
+  { id: "suv", name: "Car SUV", icon: "🚙" },
+  { id: "xuv", name: "Car XUV", icon: "🚘" }
+];
+
+export default function TravellerBookSolo() {
+
   const traveller = JSON.parse(localStorage.getItem("traveller"));
   const travellerName = traveller?.name || "Traveller";
 
-  // Pickup
-  const [pickupText, setPickupText] = useState("");
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_KEY,
+    libraries: ["places"]
+  });
+
   const [pickupCoords, setPickupCoords] = useState(null);
-  const [pickupResults, setPickupResults] = useState([]);
-  const [pickupLoading, setPickupLoading] = useState(false);
-
-  // Drop
-  const [dropText, setDropText] = useState("");
   const [dropCoords, setDropCoords] = useState(null);
-  const [dropResults, setDropResults] = useState([]);
-  const [dropLoading, setDropLoading] = useState(false);
 
-  // Route
-  const [route, setRoute] = useState([]);
+  const [pickupAuto, setPickupAuto] = useState(null);
+  const [dropAuto, setDropAuto] = useState(null);
 
-  // Cache + debounce refs
-  const cacheRef = useRef({});
-  const debounceTimer = useRef(null);
+  const [pickupText, setPickupText] = useState("");
+  const [dropText, setDropText] = useState("");
 
-  /* =========================
-     Reverse Geocode (India)
-  ========================= */
-  const reverseGeocode = async (lat, lng) => {
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en&countrycodes=in`
-      );
-      const data = await res.json();
-      setPickupText(data.display_name || "Current Location");
-    } catch {}
+  const [vehicle, setVehicle] = useState("mini");
+
+  const [directions, setDirections] = useState(null);
+
+  const [distance, setDistance] = useState(0);
+  const [eta, setEta] = useState(0);
+  const [price, setPrice] = useState(0);
+
+  const [surge, setSurge] = useState(1);
+  const [showTraffic, setShowTraffic] = useState(true);
+
+  /* -------- CURRENT LOCATION -------- */
+
+  useEffect(() => {
+
+    navigator.geolocation.getCurrentPosition((pos) => {
+
+      const { latitude, longitude } = pos.coords;
+
+      setPickupCoords({
+        lat: latitude,
+        lng: longitude
+      });
+
+      setPickupText("Current Location");
+
+    });
+
+  }, []);
+
+  /* -------- PICKUP CHANGE -------- */
+
+  const pickupChanged = () => {
+
+    if (!pickupAuto) return;
+
+    const place = pickupAuto.getPlace();
+    if (!place.geometry) return;
+
+    const loc = place.geometry.location;
+
+    setPickupCoords({
+      lat: loc.lat(),
+      lng: loc.lng()
+    });
+
+    setPickupText(place.formatted_address || place.name);
   };
 
-  /* =========================
-     Accurate GPS Location
-  ========================= */
+  /* -------- DESTINATION CHANGE -------- */
+
+  const dropChanged = () => {
+
+    if (!dropAuto) return;
+
+    const place = dropAuto.getPlace();
+    if (!place.geometry) return;
+
+    const loc = place.geometry.location;
+
+    setDropCoords({
+      lat: loc.lat(),
+      lng: loc.lng()
+    });
+
+    setDropText(place.formatted_address || place.name);
+  };
+
+  /* -------- ROUTE + SURGE CALCULATION -------- */
+
   useEffect(() => {
-    if (!navigator.geolocation) return;
 
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
-        if (accuracy > 1500) return;
+    if (!pickupCoords || !dropCoords || !isLoaded) return;
 
-        setPickupCoords({ lat: latitude, lng: longitude });
-        reverseGeocode(latitude, longitude);
-      },
-      () => alert("Enable GPS & location access"),
+    const directionsService = new window.google.maps.DirectionsService();
+
+    directionsService.route(
       {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0,
+        origin: pickupCoords,
+        destination: dropCoords,
+        travelMode: "DRIVING"
+      },
+      (result, status) => {
+
+        if (status === "OK") {
+
+          setDirections(result);
+
+          const leg = result.routes[0].legs[0];
+
+          const km = leg.distance.value / 1000;
+          const minutes = leg.duration.value / 60;
+
+          setDistance(km.toFixed(2));
+          setEta(Math.ceil(minutes));
+
+          /* -------- SURGE CALCULATION -------- */
+
+          let surgeMultiplier = 1;
+
+          const hour = new Date().getHours();
+
+          if (hour >= 8 && hour <= 10) surgeMultiplier += 0.3;
+          if (hour >= 18 && hour <= 21) surgeMultiplier += 0.3;
+
+          if (minutes / km > 3) surgeMultiplier += 0.5;
+          else if (minutes / km > 2) surgeMultiplier += 0.2;
+
+          setSurge(surgeMultiplier);
+
+          const rate = vehicleRates[vehicle];
+
+          const finalFare = km * rate * surgeMultiplier;
+
+          setPrice(Math.ceil(finalFare));
+
+        }
+
       }
     );
 
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
+  }, [pickupCoords, dropCoords, vehicle, isLoaded]);
 
-  /* =========================
-     DEBOUNCED + CACHED SEARCH
-  ========================= */
-  const searchLocation = (query, setter, setLoading) => {
-    if (!query || query.length < 3) {
-      setter([]);
-      setLoading(false);
-      return;
-    }
+  /* -------- BOOK RIDE -------- */
 
-    // Clear old debounce
-    clearTimeout(debounceTimer.current);
+  const bookRide = async () => {
 
-    debounceTimer.current = setTimeout(async () => {
-      // Cache hit
-      if (cacheRef.current[query]) {
-        setter(cacheRef.current[query]);
-        setLoading(false);
-        return;
-      }
+    if (!pickupCoords || !dropCoords) return;
 
-      setLoading(true);
+    const rideData = {
 
-      const INDIA_BBOX = "68.1113787,6.5546079,97.395561,35.6745457";
+      traveller: {
+        name: traveller?.name,
+        email: traveller?.email
+      },
 
-      let url = `https://photon.komoot.io/api/?q=${encodeURIComponent(
-        query
-      )}&limit=6&bbox=${INDIA_BBOX}`;
+      pickup: {
+        address: pickupText,
+        ...pickupCoords
+      },
 
-      if (pickupCoords) {
-        url += `&lat=${pickupCoords.lat}&lon=${pickupCoords.lng}`;
-      }
+      drop: {
+        address: dropText,
+        ...dropCoords
+      },
 
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
+      vehicleType: vehicle,
+      distance,
+      eta,
+      fare: price
 
-        const results = data.features
-          .filter(
-            (f) =>
-              f.properties.country === "India" ||
-              f.properties.countrycode === "IN"
-          )
-          .map((f) => ({
-            place_id: f.properties.osm_id,
-            display_name: [
-              f.properties.name,
-              f.properties.city ||
-                f.properties.district ||
-                f.properties.state,
-            ]
-              .filter(Boolean)
-              .join(", "),
-            lat: f.geometry.coordinates[1],
-            lon: f.geometry.coordinates[0],
-          }));
-
-        cacheRef.current[query] = results;
-        setter(results);
-      } catch {
-        setter([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 400); // 👈 debounce delay
-  };
-
-  /* =========================
-     Draw Route
-  ========================= */
-  useEffect(() => {
-    const drawRoute = async () => {
-      if (!pickupCoords || !dropCoords) return;
-
-      const res = await fetch(
-        `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lng},${pickupCoords.lat};${dropCoords.lng},${dropCoords.lat}?overview=full&geometries=geojson`
-      );
-
-      const data = await res.json();
-      const coords = data.routes[0].geometry.coordinates.map(
-        ([lng, lat]) => [lat, lng]
-      );
-
-      setRoute(coords);
     };
 
-    drawRoute();
-  }, [pickupCoords, dropCoords]);
+    const res = await fetch(`${API}/create`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(rideData)
+    });
+
+    const ride = await res.json();
+
+    socket.emit("rideRequest", ride);
+  };
+
+  if (!isLoaded) return <div className="p-10">Loading Map...</div>;
 
   return (
-    <div style={{ background: "#f0fff6", minHeight: "100vh" }}>
+
+    <div className="bg-green-50 min-h-screen">
+
       <TravellerNavbar travellerName={travellerName} />
 
-      {/* MAP */}
-      <div style={{ height: "45vh" }}>
-        {pickupCoords && (
-          <MapContainer
-            center={[pickupCoords.lat, pickupCoords.lng]}
-            zoom={15}
-            style={{ height: "100%", width: "100%" }}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="&copy; OpenStreetMap contributors"
-            />
+      {/* SEARCH CARD */}
 
-            <FitBounds pickup={pickupCoords} drop={dropCoords} />
+      <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-xl p-5 mt-5">
+
+        <Autocomplete
+          onLoad={(auto) => setPickupAuto(auto)}
+          onPlaceChanged={pickupChanged}
+        >
+          <input
+            value={pickupText}
+            onChange={(e) => setPickupText(e.target.value)}
+            placeholder="Pickup Location"
+            className="w-full border border-green-300 p-3 rounded-lg mb-3"
+          />
+        </Autocomplete>
+
+        <Autocomplete
+          onLoad={(auto) => setDropAuto(auto)}
+          onPlaceChanged={dropChanged}
+        >
+          <input
+            value={dropText}
+            onChange={(e) => setDropText(e.target.value)}
+            placeholder="Destination"
+            className="w-full border border-green-300 p-3 rounded-lg"
+          />
+        </Autocomplete>
+
+      </div>
+
+      {/* MAP */}
+
+      <div className="max-w-4xl mx-auto mt-4 px-4">
+
+        {pickupCoords && (
+
+          <GoogleMap
+            mapContainerStyle={mapContainerStyle}
+            center={pickupCoords}
+            zoom={14}
+          >
+
+            {showTraffic && <TrafficLayer />}
 
             <Marker
-              position={[pickupCoords.lat, pickupCoords.lng]}
-              icon={greenIcon}
+              position={pickupCoords}
+              icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
             />
 
             {dropCoords && (
+
               <Marker
-                position={[dropCoords.lat, dropCoords.lng]}
-                icon={redIcon}
+                position={dropCoords}
+                icon="http://maps.google.com/mapfiles/ms/icons/red-dot.png"
               />
+
             )}
 
-            {route.length > 0 && (
-              <Polyline positions={route} color="#0a7c3a" weight={5} />
+            {directions && (
+              <DirectionsRenderer directions={directions} />
             )}
-          </MapContainer>
+
+          </GoogleMap>
+
         )}
+
       </div>
 
-      {/* BOOKING CARD */}
-      <div
-        style={{
-          background: "#fff",
-          marginTop: -30,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          padding: 20,
-        }}
-      ><br></br>
-        <h2 style={{ color: "#064b28", marginBottom: 12 }}>
-          Book a Solo Ride
-        </h2>
-<br></br>
-        {/* PICKUP */}
-        <input
-          value={pickupText}
-          onChange={(e) => {
-            setPickupText(e.target.value);
-            searchLocation(
-              e.target.value,
-              setPickupResults,
-              setPickupLoading
-            );
-          }}
-          placeholder="Enter pickup location"
-          style={{ width: "100%", padding: 14 }}
-        />
+      {/* TRAFFIC BUTTON */}
 
-        {pickupLoading && (
-          <div style={{ padding: 8, color: "#777" }}>
-            Searching pickup locations…
-          </div>
-        )}
-
-        {pickupResults.map((loc) => (
-          <SuggestionItem
-            key={loc.place_id}
-            icon="🟢"
-            text={loc.display_name}
-            onClick={() => {
-              setPickupText(loc.display_name);
-              setPickupCoords({ lat: loc.lat, lng: loc.lon });
-              setPickupResults([]);
-            }}
-          />
-        ))}
-
-        {/* DROP */}
-        <input
-          value={dropText}
-          onChange={(e) => {
-            setDropText(e.target.value);
-            searchLocation(
-              e.target.value,
-              setDropResults,
-              setDropLoading
-            );
-          }}
-          placeholder="Where to?"
-          style={{ width: "100%", padding: 14, marginTop: 12 }}
-        />
-
-        {dropLoading && (
-          <div style={{ padding: 8, color: "#777" }}>
-            Searching destinations…
-          </div>
-        )}
-
-        {dropResults.map((loc) => (
-          <SuggestionItem
-            key={loc.place_id}
-            icon="🔴"
-            text={loc.display_name}
-            onClick={() => {
-              setDropText(loc.display_name);
-              setDropCoords({ lat: loc.lat, lng: loc.lon });
-              setDropResults([]);
-            }}
-          />
-        ))}
+      <div className="text-center mt-3">
 
         <button
-          disabled={!pickupCoords || !dropCoords}
-          style={{
-            width: "100%",
-            marginTop: 18,
-            padding: 14,
-            background:
-              pickupCoords && dropCoords ? "#0a7c3a" : "#9fd6b5",
-            color: "#fff",
-            border: "none",
-            borderRadius: 10,
-            fontSize: 16,
-          }}
+          onClick={() => setShowTraffic(!showTraffic)}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg"
         >
-          Book Ride
+          {showTraffic ? "Hide Traffic" : "Show Traffic"}
         </button>
+
       </div>
+
+      {/* VEHICLE SELECTION */}
+
+      <div className="max-w-4xl mx-auto grid grid-cols-4 gap-3 mt-5 px-4">
+
+        {vehicles.map((v) => (
+
+          <button
+            key={v.id}
+            onClick={() => setVehicle(v.id)}
+            className={`p-4 rounded-xl border text-center font-semibold
+            ${
+              vehicle === v.id
+                ? "bg-green-600 text-white"
+                : "bg-white border-green-300 text-green-700"
+            }`}
+          >
+
+            <div className="text-xl">{v.icon}</div>
+            <div className="text-sm">{v.name}</div>
+
+          </button>
+
+        ))}
+
+      </div>
+
+      {/* FARE CARD */}
+
+      {distance > 0 && (
+
+        <div className="max-w-md mx-auto mt-6 bg-white rounded-xl shadow-lg p-6 text-center">
+
+          <p className="text-gray-600">
+            Distance: <b>{distance} km</b>
+          </p>
+
+          <p className="text-gray-600">
+            ETA: <b>{eta} mins</b>
+          </p>
+
+          <p className="text-3xl font-bold text-green-600 mt-2">
+            ₹ {price}
+          </p>
+
+          {surge > 1 && (
+            <p className="text-red-500 text-sm mt-1">
+              🔥 Surge pricing active
+            </p>
+          )}
+
+          <button
+            onClick={bookRide}
+            className="mt-4 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg"
+          >
+            Book Ride
+          </button>
+
+        </div>
+
+      )}
+
     </div>
   );
-};
-
-export default TravellerBookSolo;
+}
