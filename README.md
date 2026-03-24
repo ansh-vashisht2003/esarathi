@@ -1,4 +1,4 @@
-# 🚗 eSarthi – Smart Ride & Cab Sharing Platform
+# 🚗 ESarathi – Smart Ride & Cab Sharing Platform
 
 eSarthi is a full-stack ride-hailing and cab-sharing platform built with **MERN Stack (MongoDB, Express, React, Node.js)**.
 It allows travellers to **book rides instantly or join shared rides along a route**, similar to **Uber + BlaBlaCar combined**.
