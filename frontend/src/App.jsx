@@ -22,6 +22,7 @@ import DriverProfile from "./pages/driver/DriverProfile";
 //import ResetPassword from "./pages/traveller/ResetPassword";
 import DriverSupport from "./pages/driver/DriverSupport";
 import DriverSoloTrips from "./pages/driver/DriverSoloTrips";
+import BookShare from "./pages/traveller/TravellerCabShare";
 function App() {
   return (
     <Router>
@@ -41,7 +42,9 @@ function App() {
         <Route path="/traveller/book-solo" element={<TravellerBookSolo />} />
         <Route path="/traveller/contact" element={<TravellerContact />} />
         <Route path="/contact-success" element={<ContactSuccess />} />
-        <Route path="/traveller/profile" element={<TravellerProfile />} />
+        <Route path="/traveller/profile" element={<TravellerProfile />}  />
+        <Route path="/traveller/book-share" element={<BookShare />}
+        />
 
         
 
