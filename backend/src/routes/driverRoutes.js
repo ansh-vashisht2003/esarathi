@@ -7,6 +7,7 @@ import {
   changeDriverPassword,
   uploadDriverProfilePic,
 } from "../controllers/driverController.js";
+import { driverSupport } from "../controllers/driverSupportController.js";
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ router.post("/login", driverLogin);
    DRIVER SELFIE (BASE64 IMAGE - NO MULTER)
 ====================== */
 router.post("/selfie/:email", uploadDriverSelfie);
-
+router.post("/support", driverSupport);
 /* ======================
    CHANGE PASSWORD
 ====================== */

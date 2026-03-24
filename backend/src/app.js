@@ -5,6 +5,7 @@ import path from "path";
 import travellerRoutes from "./routes/travellerRoutes.js";
 import driverRoutes from "./routes/driverRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import rideRoutes from "./routes/rideRoutes.js";
 
 const app = express();
 
@@ -34,5 +35,9 @@ app.use("/uploads", express.static(path.join(ROOT, "uploads")));
 app.use("/api/traveller", travellerRoutes);
 app.use("/api/driver", driverRoutes);
 app.use("/api/admin", adminRoutes);
+
+// ✅ BOTH ride routes supported
+app.use("/api/ride", rideRoutes);   // your existing route
+app.use("/api/rides", rideRoutes);  // added from 2nd code
 
 export default app;
