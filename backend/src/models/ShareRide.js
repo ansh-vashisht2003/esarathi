@@ -8,7 +8,19 @@ const shareRideSchema = new mongoose.Schema({
     required: true
   },
 
-  vehicleType: String,
+  vehicleType: {
+    type: String,
+    required: true
+  },
+
+  vehicleNumber: {
+    type: String,
+    required: true
+  },
+  date: {
+  type: String,
+  required: true
+},
 
   pickup: {
     city: String,
@@ -44,6 +56,11 @@ const shareRideSchema = new mongoose.Schema({
   ],
 
   time: String,
+
+  status: {
+    type: String,
+    default: "active"
+  },
 
   createdAt: {
     type: Date,

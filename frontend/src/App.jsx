@@ -23,6 +23,7 @@ import DriverProfile from "./pages/driver/DriverProfile";
 import DriverSupport from "./pages/driver/DriverSupport";
 import DriverSoloTrips from "./pages/driver/DriverSoloTrips";
 import BookShare from "./pages/traveller/TravellerCabShare";
+import DriverCreateShareRide from "./pages/driver/DriverCreateShareRide";
 function App() {
   return (
     <Router>
@@ -58,6 +59,7 @@ function App() {
         <Route path="/driver/profile" element={<DriverProfile />} />
         <Route path="/driver/support" element={<DriverSupport />} />
         <Route path="/driver/solo-trips" element={<DriverSoloTrips />} />
+        <Route path="/driver/ride-sharing" element={<DriverCreateShareRide />} />
 
         {/* Admin auth */}
         <Route path="/admin/login" element={<AdminLogin />} />

@@ -1,274 +1,398 @@
-import { useEffect, useState } from "react";
+import DriverTopbar from "./DriverTopbar";
+import { useEffect, useState, useRef } from "react";
 import {
-  MapContainer,
-  TileLayer,
+  GoogleMap,
   Marker,
-  Polyline,
-} from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+  DirectionsRenderer,
+  useJsApiLoader
+} from "@react-google-maps/api";
+
 import io from "socket.io-client";
 
 const socket = io("http://localhost:5000");
 const API = "http://localhost:5000/api/rides";
 
-/* ICONS */
-const driverIcon = new L.Icon({
-  iconUrl: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
-  iconSize: [32, 32],
-});
+const GOOGLE_KEY = "AIzaSyDwaSxjJlJvRtRfLCUk0Bw4BLy3QUJk4KI";
 
-const pickupIcon = new L.Icon({
-  iconUrl: "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
-  iconSize: [32, 32],
-});
-
-const dropIcon = new L.Icon({
-  iconUrl: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
-  iconSize: [32, 32],
-});
+const mapContainerStyle = {
+  width: "100%",
+  height: "100%"
+};
 
 const DriverSoloTrips = () => {
+
   const driver = JSON.parse(localStorage.getItem("driver"));
+
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_KEY
+  });
+
+  const mapRef = useRef(null);
 
   const [rides, setRides] = useState([]);
   const [selectedRide, setSelectedRide] = useState(null);
-  const [route, setRoute] = useState([]);
   const [driverLoc, setDriverLoc] = useState(null);
+  const [directions, setDirections] = useState(null);
   const [rideCode, setRideCode] = useState("");
+  const [rideStarted, setRideStarted] = useState(false);
 
-  /* ================= DRIVER LIVE LOCATION ================= */
+  /* ---------------- DRIVER LOCATION ---------------- */
+
   useEffect(() => {
+
     if (!driver?.email) return;
 
-    const watchId = navigator.geolocation.watchPosition((pos) => {
-      const loc = {
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-      };
-      setDriverLoc(loc);
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported by your browser");
+      return;
+    }
 
-      socket.emit("driverOnline", {
-        email: driver.email,
-        lat: loc.lat,
-        lng: loc.lng,
-      });
-    });
+    /* 1️⃣ Get location instantly */
+
+    navigator.geolocation.getCurrentPosition(
+
+      (pos) => {
+
+        const { latitude, longitude } = pos.coords;
+
+        const loc = {
+          lat: latitude,
+          lng: longitude
+        };
+
+        setDriverLoc(loc);
+
+        socket.emit("driverOnline", {
+          email: driver.email,
+          lat: latitude,
+          lng: longitude
+        });
+
+      },
+
+      (err) => {
+        console.error("Initial GPS error:", err);
+      },
+
+      {
+        enableHighAccuracy: true
+      }
+
+    );
+
+    /* 2️⃣ Track movement continuously */
+
+    const watchId = navigator.geolocation.watchPosition(
+
+      (pos) => {
+
+        const { latitude, longitude } = pos.coords;
+
+        const loc = {
+          lat: latitude,
+          lng: longitude
+        };
+
+        setDriverLoc(loc);
+
+        socket.emit("driverOnline", {
+          email: driver.email,
+          lat: latitude,
+          lng: longitude
+        });
+
+      },
+
+      (err) => {
+        console.error("GPS Error:", err);
+      },
+
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+
+    );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [driver]);
 
-  /* ================= LOAD SEARCHING RIDES ================= */
-  const loadRides = async () => {
-    const res = await fetch(`${API}/searching`);
-    const data = await res.json();
-    setRides(data);
-  };
+  }, [driver?.email]);
+
+
+
+  /* ---------------- AUTO CENTER MAP ---------------- */
 
   useEffect(() => {
+
+    if (mapRef.current && driverLoc) {
+      mapRef.current.panTo(driverLoc);
+    }
+
+  }, [driverLoc]);
+
+
+
+  /* ---------------- LOAD RIDES ---------------- */
+
+  const loadRides = async () => {
+
+    try {
+
+      const res = await fetch(`${API}/searching`);
+      const data = await res.json();
+
+      setRides(data);
+
+    } catch (err) {
+
+      console.error("Ride load error:", err);
+
+    }
+
+  };
+
+
+
+  useEffect(() => {
+
     if (!driver?.email) return;
 
     socket.emit("joinDriver", driver.email);
 
     loadRides();
 
-    const handleNewRide = (ride) => {
+    socket.on("newRideRequest", (ride) => {
       setRides((prev) => [ride, ...prev]);
-    };
+    });
 
-    socket.on("newRideRequest", handleNewRide);
+    return () => socket.off("newRideRequest");
 
-    return () => socket.off("newRideRequest", handleNewRide);
-  }, [driver]);
+  }, [driver?.email]);
 
-  /* ================= DRAW ROUTE (Driver → Pickup → Drop) ================= */
+
+
+  /* ---------------- ROUTE ---------------- */
+
   useEffect(() => {
-    const drawRoute = async () => {
-      if (!driverLoc || !selectedRide) return;
 
-      const { pickup, drop } = selectedRide;
+    if (!driverLoc || !selectedRide || !isLoaded) return;
 
-      const res = await fetch(
-        `https://router.project-osrm.org/route/v1/driving/${driverLoc.lng},${driverLoc.lat};${pickup.lng},${pickup.lat};${drop.lng},${drop.lat}?overview=full&geometries=geojson`
-      );
-      const data = await res.json();
+    const directionsService = new window.google.maps.DirectionsService();
 
-      const coords = data.routes[0].geometry.coordinates.map(
-        ([lng, lat]) => [lat, lng]
-      );
+    const origin = !rideStarted
+      ? driverLoc
+      : { lat: selectedRide.pickup.lat, lng: selectedRide.pickup.lng };
 
-      setRoute(coords);
-    };
+    const destination = !rideStarted
+      ? { lat: selectedRide.pickup.lat, lng: selectedRide.pickup.lng }
+      : { lat: selectedRide.drop.lat, lng: selectedRide.drop.lng };
 
-    drawRoute();
-  }, [driverLoc, selectedRide]);
+    directionsService.route(
+      {
+        origin,
+        destination,
+        travelMode: "DRIVING"
+      },
+      (result, status) => {
 
-  /* ================= ACCEPT RIDE (🔥 FIXED) ================= */
+        if (status === "OK") {
+          setDirections(result);
+        }
+
+      }
+    );
+
+  }, [driverLoc, selectedRide, rideStarted, isLoaded]);
+
+
+
+  /* ---------------- ACCEPT RIDE ---------------- */
+
   const acceptRide = async (rideId) => {
-    try {
-      const res = await fetch(`${API}/accept`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rideId,
-          driverEmail: driver.email, // ✅ IMPORTANT (matches backend)
-        }),
-      });
 
-      const data = await res.json();
+    const res = await fetch(`${API}/accept`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        rideId,
+        driverEmail: driver.email
+      })
+    });
 
-      console.log("✅ Ride accepted:", data);
+    const data = await res.json();
 
-      alert("✅ Ride Accepted!");
-      setSelectedRide(data);
-      loadRides();
-    } catch (err) {
-      console.error("❌ Accept ride error:", err);
-    }
+    alert("Ride Accepted");
+
+    setSelectedRide(data);
+
+    loadRides();
+
   };
 
-  /* ================= START RIDE (CODE) ================= */
+
+
+  /* ---------------- START RIDE ---------------- */
+
   const startRide = async () => {
-    if (!rideCode) return alert("Enter ride code");
 
     const res = await fetch(`${API}/start`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rideCode }),
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        rideCode
+      })
     });
 
     const data = await res.json();
 
     if (data.message) {
-      alert("🚕 Ride Started!");
+
+      alert("Ride Started");
+
+      setRideStarted(true);
+
     } else {
-      alert("❌ Invalid Code");
+
+      alert("Invalid Code");
+
     }
+
   };
 
+
+
+  if (!isLoaded) return <div className="p-10">Loading Map...</div>;
+
+
+
   return (
-    <div className="bg-green-50 min-h-screen">
+
+    <div className="bg-green-50 min-h-screen flex flex-col">
+
+      <DriverTopbar />
 
       {/* MAP */}
-      <div style={{ height: "35vh" }}>
-        {driverLoc && (
-          <MapContainer
-            center={[driverLoc.lat, driverLoc.lng]}
-            zoom={14}
-            style={{ height: "100%", width: "100%" }}
-          >
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-            {/* DRIVER */}
-            <Marker position={[driverLoc.lat, driverLoc.lng]} icon={driverIcon} />
+      <div className="relative flex-grow" style={{ height: "45vh" }}>
 
-            {/* PICKUP */}
-            {selectedRide && (
-              <Marker
-                position={[selectedRide.pickup.lat, selectedRide.pickup.lng]}
-                icon={pickupIcon}
-              />
-            )}
+        {!driverLoc && (
 
-            {/* DROP */}
-            {selectedRide && (
-              <Marker
-                position={[selectedRide.drop.lat, selectedRide.drop.lng]}
-                icon={dropIcon}
-              />
-            )}
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
 
-            {/* ROUTE */}
-            {route.length > 0 && (
-              <Polyline positions={route} color="blue" weight={5} />
-            )}
-          </MapContainer>
+            <p className="animate-pulse">📍 Locating driver...</p>
+
+          </div>
+
         )}
+
+        <GoogleMap
+          mapContainerStyle={mapContainerStyle}
+          center={driverLoc || { lat: 28.6139, lng: 77.2090 }}
+          zoom={16}
+          onLoad={(map) => (mapRef.current = map)}
+        >
+
+          {driverLoc && (
+
+            <Marker
+              position={driverLoc}
+              icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+            />
+
+          )}
+
+          {selectedRide && !rideStarted && (
+
+            <Marker
+              position={{
+                lat: selectedRide.pickup.lat,
+                lng: selectedRide.pickup.lng
+              }}
+              label="Pickup"
+            />
+
+          )}
+
+          {directions && (
+
+            <DirectionsRenderer directions={directions} />
+
+          )}
+
+        </GoogleMap>
+
       </div>
 
-      {/* UI CARD */}
-      <div className="bg-white rounded-t-3xl -mt-6 p-5 shadow-xl">
 
-        {/* SELECTED RIDE */}
+
+      {/* UI PANEL */}
+
+      <div className="bg-white rounded-t-3xl -mt-8 p-6 shadow-xl">
+
         {selectedRide ? (
-          <div className="bg-green-100 p-4 rounded-xl shadow-lg mb-4">
-            <h3 className="text-lg font-bold text-green-800">
-              🚕 Active Ride
-            </h3>
 
-            <p className="text-sm mt-1">
-              <b>Traveller:</b> {selectedRide.traveller.name}
-            </p>
-            <p className="text-sm">
-              <b>Pickup:</b> {selectedRide.pickup.address}
-            </p>
-            <p className="text-sm">
-              <b>Drop:</b> {selectedRide.drop.address}
-            </p>
-            <p className="text-sm">
-              <b>Fare:</b> ₹{selectedRide.fare}
-            </p>
+          <div>
 
-            {/* START RIDE */}
-            <div className="mt-3">
-              <input
-                value={rideCode}
-                onChange={(e) => setRideCode(e.target.value)}
-                placeholder="Enter Ride Code"
-                className="w-full border px-3 py-2 rounded-lg mb-2"
-              />
-              <button
-                onClick={startRide}
-                className="w-full bg-green-700 text-white py-2 rounded-lg font-semibold"
-              >
-                Start Ride
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <h2 className="text-xl font-bold text-green-800 mb-3">
-              🚗 Nearby Ride Requests
-            </h2>
+            <p>Traveller: {selectedRide.traveller?.name}</p>
+            <p>Pickup: {selectedRide.pickup?.address}</p>
+            <p>Drop: {selectedRide.drop?.address}</p>
+            <p>Fare: ₹{selectedRide.fare}</p>
 
-            {rides.length === 0 && (
-              <p className="text-gray-500 text-sm">No rides found</p>
-            )}
+            {!rideStarted && (
 
-            {rides.map((ride) => (
-              <div
-                key={ride._id}
-                className="border border-green-300 p-3 rounded-xl mb-3 shadow-sm"
-              >
-                <p className="text-sm">
-                  <b>Traveller:</b> {ride.traveller.name}
-                </p>
-                <p className="text-sm">
-                  <b>Pickup:</b> {ride.pickup.address}
-                </p>
-                <p className="text-sm">
-                  <b>Drop:</b> {ride.drop.address}
-                </p>
-                <p className="text-sm">
-                  <b>Vehicle:</b> {ride.vehicleType}
-                </p>
-                <p className="text-sm font-semibold text-green-700">
-                  ₹{ride.fare}
-                </p>
+              <>
+                <input
+                  value={rideCode}
+                  onChange={(e)=>setRideCode(e.target.value)}
+                  placeholder="Enter OTP"
+                  className="border p-2 w-full mt-3"
+                />
 
                 <button
-                  onClick={() => acceptRide(ride._id)}
-                  className="mt-2 w-full bg-green-600 text-white py-2 rounded-lg font-semibold"
+                  onClick={startRide}
+                  className="bg-green-600 text-white w-full mt-3 p-2 rounded"
                 >
-                  Accept Ride
+                  Start Ride
                 </button>
-              </div>
-            ))}
-          </>
+              </>
+
+            )}
+
+          </div>
+
+        ) : (
+
+          rides.map((ride)=>(
+
+            <div key={ride._id} className="border p-3 mb-3">
+
+              <p>{ride.pickup.address}</p>
+              <p>{ride.drop.address}</p>
+
+              <button
+                onClick={()=>acceptRide(ride._id)}
+                className="bg-black text-white w-full mt-2 p-2"
+              >
+                Accept Ride
+              </button>
+
+            </div>
+
+          ))
+
         )}
+
       </div>
+
     </div>
+
   );
+
 };
 
 export default DriverSoloTrips;

@@ -69,20 +69,50 @@ export default function TravellerBookSolo() {
 
   useEffect(() => {
 
-    navigator.geolocation.getCurrentPosition((pos) => {
+  navigator.geolocation.getCurrentPosition(
+
+    (pos) => {
 
       const { latitude, longitude } = pos.coords;
 
-      setPickupCoords({
+      const coords = {
         lat: latitude,
         lng: longitude
+      };
+
+      setPickupCoords(coords);
+
+      /* convert lat lng → real address */
+
+      const geocoder = new window.google.maps.Geocoder();
+
+      geocoder.geocode({ location: coords }, (results, status) => {
+
+        if (status === "OK" && results[0]) {
+
+          setPickupText(results[0].formatted_address);
+
+        } else {
+
+          setPickupText("Unknown Location");
+
+        }
+
       });
 
-      setPickupText("Current Location");
+    },
 
-    });
+    (err) => {
+      console.log("GPS error:", err);
+    },
 
-  }, []);
+    {
+      enableHighAccuracy: true
+    }
+
+  );
+
+}, []);
 
   /* -------- PICKUP CHANGE -------- */
 
