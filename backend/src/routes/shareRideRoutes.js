@@ -29,8 +29,53 @@ router.post("/create", async (req, res) => {
   }
 
 });
+/* SEARCH RIDES */
 
+router.get("/search", async (req, res) => {
 
+  try {
+
+    const { pickup, drop } = req.query;
+
+    const rides = await ShareRide.find({
+      status: "active"
+    })
+      .populate("driver")
+      .populate("passengers");
+
+    const matched = rides.filter((ride) => {
+
+      const cities = [
+        ride.pickup.city,
+        ...ride.route.map(r => r.city),
+        ride.drop.city
+      ].map(c => c.toLowerCase());
+
+      const pickupIndex = cities.findIndex(c =>
+        c.includes(pickup.toLowerCase())
+      );
+
+      const dropIndex = cities.findIndex(c =>
+        c.includes(drop.toLowerCase())
+      );
+
+      return pickupIndex !== -1 &&
+             dropIndex !== -1 &&
+             pickupIndex < dropIndex;
+
+    });
+
+    res.json(matched);
+
+  } catch (err) {
+
+    res.status(500).json({
+      message: "Search failed"
+    });
+
+  }
+
+});
 /* GET ALL ACTIVE RIDES */
 
 router.get("/all", async (req, res) => {
