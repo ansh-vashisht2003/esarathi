@@ -8,7 +8,66 @@ export const createShareRide = async (req, res) => {
 
   try {
 
-    const ride = new ShareRide(req.body);
+    const {
+      driver,
+      vehicleType,
+      vehicleNumber,
+      pickup,
+      drop,
+      route = [],
+      totalPrice,
+      seats,
+      date,
+      time
+    } = req.body;
+
+    const locations = [
+      pickup.city,
+      ...route.map(r => r.city),
+      drop.city
+    ];
+
+    const totalDistance = 200;
+
+    const totalPriceNum = Number(totalPrice);
+    const seatsNum = Number(seats);
+
+    const pricePerKm = totalPriceNum / totalDistance;
+
+    const segments = [];
+
+    for (let i = 0; i < locations.length - 1; i++) {
+
+      segments.push({
+        from: locations[i],
+        to: locations[i + 1],
+        seatsUsed: 0
+      });
+
+    }
+
+    const ride = new ShareRide({
+
+      driver,
+      vehicleType,
+      vehicleNumber,
+
+      pickup,
+      drop,
+      route,
+
+      totalPrice: totalPriceNum,
+      totalDistance,
+      pricePerKm,
+
+      seats: seatsNum,
+      availableSeats: seatsNum,
+
+      segments,
+      date,
+      time
+
+    });
 
     await ride.save();
 
@@ -45,13 +104,15 @@ export const searchSharedRides = async (req, res) => {
 
     const validRides = rides.filter((ride) => {
 
-      const rideTime = new Date(
-        `${ride.createdAt.toDateString()} ${ride.time}`
-      );
+      const rideTime = new Date(`${ride.date}T${ride.time}`);
 
       if (rideTime <= now) return false;
 
-      const cities = ride.route.map(r => r.city.toLowerCase());
+      const cities = [
+        ride.pickup.city,
+        ...ride.route.map(r => r.city),
+        ride.drop.city
+      ].map(c => c.toLowerCase());
 
       const pickupIndex = cities.findIndex(c =>
         c.includes(pickup.toLowerCase())
@@ -62,8 +123,8 @@ export const searchSharedRides = async (req, res) => {
       );
 
       return pickupIndex !== -1 &&
-             dropIndex !== -1 &&
-             pickupIndex < dropIndex;
+        dropIndex !== -1 &&
+        pickupIndex < dropIndex;
 
     });
 
@@ -79,13 +140,13 @@ export const searchSharedRides = async (req, res) => {
 
 
 
-/* JOIN RIDE */
+/* JOIN RIDE (MULTI SEAT BOOKING) */
 
 export const joinRide = async (req, res) => {
 
   try {
 
-    const { rideId, travellerEmail } = req.body;
+    const { rideId, travellerEmail, pickup, drop, seats, passengerNames } = req.body;
 
     const ride = await ShareRide.findById(rideId);
 
@@ -93,10 +154,7 @@ export const joinRide = async (req, res) => {
       return res.json({ message: "Ride not found" });
 
     if (ride.status !== "active")
-      return res.json({ message: "Ride not available" });
-
-    if (ride.availableSeats <= 0)
-      return res.json({ message: "No seats left" });
+      return res.json({ message: "Ride not active" });
 
     const traveller = await Traveller.findOne({
       email: travellerEmail
@@ -105,18 +163,99 @@ export const joinRide = async (req, res) => {
     if (!traveller)
       return res.json({ message: "Traveller not found" });
 
-    if (ride.passengers.includes(traveller._id))
-      return res.json({ message: "Already joined ride" });
 
-    ride.passengers.push(traveller._id);
+    /* ALL CITIES */
 
-    ride.availableSeats -= 1;
+    const cities = [
+      ride.pickup.city,
+      ...ride.route.map(r => r.city),
+      ride.drop.city
+    ];
+
+
+    /* FIND PICKUP & DROP INDEX */
+
+    const pickupIndex = cities.findIndex(c =>
+      c.toLowerCase().includes(pickup.toLowerCase())
+    );
+
+    const dropIndex = cities.findIndex(c =>
+      c.toLowerCase().includes(drop.toLowerCase())
+    );
+
+    if (pickupIndex === -1 || dropIndex === -1)
+      return res.json({ message: "Invalid pickup/drop location" });
+
+    if (pickupIndex >= dropIndex)
+      return res.json({ message: "Invalid route direction" });
+
+
+    const seatCount = Number(seats);
+
+
+    /* CHECK SEAT AVAILABILITY */
+
+    for (let i = pickupIndex; i < dropIndex; i++) {
+
+      if (ride.segments[i].seatsUsed + seatCount > ride.seats) {
+
+        return res.json({
+          message: "Not enough seats available"
+        });
+
+      }
+
+    }
+
+
+    /* RESERVE SEGMENTS */
+
+    for (let i = pickupIndex; i < dropIndex; i++) {
+
+      ride.segments[i].seatsUsed += seatCount;
+
+    }
+
+
+    /* ADD PASSENGERS */
+
+    for (let i = 0; i < seatCount; i++) {
+
+      ride.passengers.push(traveller._id);
+
+    }
+
+
+    ride.availableSeats -= seatCount;
+
+
+    /* PRICE CALCULATION */
+
+    const segmentCount = dropIndex - pickupIndex;
+
+    const segmentDistance =
+      ride.totalDistance / ride.segments.length;
+
+    const passengerDistance =
+      segmentDistance * segmentCount;
+
+    const price =
+      passengerDistance * ride.pricePerKm * seatCount;
+
 
     await ride.save();
 
+
     res.json({
-      message: "Seat booked successfully",
-      ride
+
+      message: "Seats booked successfully",
+
+      price: Math.round(price),
+
+      seatsBooked: seatCount,
+
+      passengers: passengerNames
+
     });
 
   } catch (err) {
@@ -129,7 +268,7 @@ export const joinRide = async (req, res) => {
 
 
 
-/* DRIVER CANCEL RIDE */
+/* DRIVER CANCEL */
 
 export const driverCancelRide = async (req, res) => {
 
@@ -141,19 +280,6 @@ export const driverCancelRide = async (req, res) => {
 
     if (!ride)
       return res.json({ message: "Ride not found" });
-
-    const rideTime = new Date(
-      `${ride.createdAt.toDateString()} ${ride.time}`
-    );
-
-    const now = new Date();
-
-    const diffHours = (rideTime - now) / (1000 * 60 * 60);
-
-    if (diffHours < 5)
-      return res.json({
-        message: "Cannot cancel ride within 5 hours of departure"
-      });
 
     ride.status = "cancelled";
 
@@ -173,40 +299,20 @@ export const driverCancelRide = async (req, res) => {
 
 
 
-/* TRAVELLER CANCEL BOOKING */
+/* TRAVELLER CANCEL */
 
 export const travellerCancelRide = async (req, res) => {
 
   try {
 
     const { rideId } = req.params;
-
     const { travellerEmail } = req.body;
 
     const ride = await ShareRide.findById(rideId);
 
-    if (!ride)
-      return res.json({ message: "Ride not found" });
-
     const traveller = await Traveller.findOne({
       email: travellerEmail
     });
-
-    if (!traveller)
-      return res.json({ message: "Traveller not found" });
-
-    const rideTime = new Date(
-      `${ride.createdAt.toDateString()} ${ride.time}`
-    );
-
-    const now = new Date();
-
-    const diffHours = (rideTime - now) / (1000 * 60 * 60);
-
-    if (diffHours < 10)
-      return res.json({
-        message: "Cannot cancel within 10 hours of ride"
-      });
 
     ride.passengers = ride.passengers.filter(
       p => p.toString() !== traveller._id.toString()
@@ -217,7 +323,7 @@ export const travellerCancelRide = async (req, res) => {
     await ride.save();
 
     res.json({
-      message: "Booking cancelled successfully"
+      message: "Booking cancelled"
     });
 
   } catch (err) {

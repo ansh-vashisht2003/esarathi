@@ -17,6 +17,8 @@ export default function TravellerCabShare() {
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [passengerCount, setPassengerCount] = useState(1);
+  const [passengerNames, setPassengerNames] = useState([]);
 
   /* GOOGLE AUTOCOMPLETE */
 
@@ -25,34 +27,24 @@ export default function TravellerCabShare() {
     if (!window.google) return;
 
     const pickupAuto = new window.google.maps.places.Autocomplete(
-      pickupRef.current,
-      { types: ["(cities)"] }
+      pickupRef.current
     );
 
     pickupAuto.addListener("place_changed", () => {
-
       const place = pickupAuto.getPlace();
-
       setPickup(place.formatted_address);
-
     });
 
-
     const dropAuto = new window.google.maps.places.Autocomplete(
-      dropRef.current,
-      { types: ["(cities)"] }
+      dropRef.current
     );
 
     dropAuto.addListener("place_changed", () => {
-
       const place = dropAuto.getPlace();
-
       setDrop(place.formatted_address);
-
     });
 
   }, []);
-
 
 
   /* SEARCH RIDES */
@@ -76,6 +68,41 @@ export default function TravellerCabShare() {
   };
 
 
+  /* PRICE CALCULATION */
+
+  const calculatePrice = (ride) => {
+
+    const cities = [
+      ride.pickup.city,
+      ...ride.route.map(r => r.city),
+      ride.drop.city
+    ];
+
+    const pickupIndex = cities.findIndex(c =>
+      c.toLowerCase().includes(pickup.toLowerCase())
+    );
+
+    const dropIndex = cities.findIndex(c =>
+      c.toLowerCase().includes(drop.toLowerCase())
+    );
+
+    if (pickupIndex === -1 || dropIndex === -1)
+      return Math.round(ride.totalPrice);
+
+    const segmentCount = dropIndex - pickupIndex;
+
+    const segmentDistance =
+      ride.totalDistance / ride.segments.length;
+
+    const passengerDistance =
+      segmentDistance * segmentCount;
+
+    const price =
+      passengerDistance * (ride.pricePerKm || 0) * passengerCount;
+
+    return Math.round(price);
+  };
+
 
   /* JOIN RIDE */
 
@@ -90,20 +117,29 @@ export default function TravellerCabShare() {
       },
 
       body: JSON.stringify({
+
         rideId,
-        travellerEmail: traveller.email
+        travellerEmail: traveller.email,
+        pickup,
+        drop,
+        seats: passengerCount,
+        passengerNames
+
       })
 
     });
 
     const data = await res.json();
 
-    alert(data.message);
+    alert(
+      `${data.message}
+Seats Booked: ${passengerCount}
+Total Price: ₹${data.price}`
+    );
 
     searchRides();
 
   };
-
 
 
   return (
@@ -111,7 +147,6 @@ export default function TravellerCabShare() {
     <div className="bg-gray-100 min-h-screen">
 
       <TravellerNavbar travellerName={travellerName} />
-
 
       {/* SEARCH BOX */}
 
@@ -151,7 +186,6 @@ export default function TravellerCabShare() {
       </div>
 
 
-
       {/* RIDE LIST */}
 
       <div className="max-w-4xl mx-auto mt-8 space-y-5">
@@ -184,7 +218,7 @@ export default function TravellerCabShare() {
               </div>
 
               <p className="text-green-600 font-bold text-lg">
-                ₹{ride.price}
+                ₹{calculatePrice(ride)}
               </p>
 
             </div>
@@ -199,6 +233,57 @@ export default function TravellerCabShare() {
               <p className="text-sm text-gray-500">
                 {ride.date} • {ride.time}
               </p>
+
+            </div>
+
+
+            {/* PASSENGER SELECTOR */}
+
+            <div className="flex items-center gap-3 mt-4">
+
+              <button
+                onClick={()=>setPassengerCount(Math.max(1, passengerCount-1))}
+                className="px-3 py-1 bg-gray-200 rounded"
+              >
+                -
+              </button>
+
+              <span className="font-semibold">{passengerCount}</span>
+
+              <button
+                onClick={()=>setPassengerCount(passengerCount+1)}
+                className="px-3 py-1 bg-gray-200 rounded"
+              >
+                +
+              </button>
+
+              <span className="text-sm text-gray-600">
+                Passengers
+              </span>
+
+            </div>
+
+
+            {/* PASSENGER NAMES */}
+
+            <div className="mt-3">
+
+              {Array.from({ length: passengerCount }).map((_, i) => (
+
+                <input
+                  key={i}
+                  placeholder={`Passenger ${i+1} name`}
+                  className="border p-2 w-full mb-2 rounded"
+                  onChange={(e)=>{
+
+                    const names=[...passengerNames];
+                    names[i]=e.target.value;
+                    setPassengerNames(names);
+
+                  }}
+                />
+
+              ))}
 
             </div>
 

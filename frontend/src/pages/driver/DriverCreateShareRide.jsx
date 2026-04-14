@@ -11,15 +11,15 @@ function DriverCreateShareRide() {
   const dropRef = useRef(null);
   const routeRef = useRef(null);
 
-  const [pickup, setPickup] = useState("");
-  const [drop, setDrop] = useState("");
+  const [pickup, setPickup] = useState({});
+  const [drop, setDrop] = useState({});
   const [route, setRoute] = useState([]);
   const [routeInput, setRouteInput] = useState("");
 
   const [vehicleType, setVehicleType] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
 
-  const [price, setPrice] = useState("");
+  const [totalPrice, setTotalPrice] = useState("");
   const [seats, setSeats] = useState("");
 
   const [date, setDate] = useState("");
@@ -39,9 +39,8 @@ function DriverCreateShareRide() {
 
     const script = document.createElement("script");
 
-    script.src =
-      "https://maps.googleapis.com/maps/api/js?key=AIzaSyDwaSxjJlJvRtRfLCUk0Bw4BLy3QUJk4KI&libraries=places";
-
+  script.src =
+"https://maps.googleapis.com/maps/api/js?key=AIzaSyDwaSxjJlJvRtRfLCUk0Bw4BLy3QUJk4KI&libraries=places";
     script.async = true;
 
     script.onload = () => initAutocomplete();
@@ -59,16 +58,30 @@ function DriverCreateShareRide() {
     const pickupAuto = new window.google.maps.places.Autocomplete(pickupRef.current);
 
     pickupAuto.addListener("place_changed", () => {
+
       const place = pickupAuto.getPlace();
-      setPickup(place.formatted_address);
+
+      setPickup({
+        city: place.formatted_address,
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng()
+      });
+
     });
 
 
     const dropAuto = new window.google.maps.places.Autocomplete(dropRef.current);
 
     dropAuto.addListener("place_changed", () => {
+
       const place = dropAuto.getPlace();
-      setDrop(place.formatted_address);
+
+      setDrop({
+        city: place.formatted_address,
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng()
+      });
+
     });
 
 
@@ -78,7 +91,14 @@ function DriverCreateShareRide() {
 
       const place = routeAuto.getPlace();
 
-      setRoute(prev => [...prev, place.formatted_address]);
+      setRoute(prev => [
+        ...prev,
+        {
+          city: place.formatted_address,
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng()
+        }
+      ]);
 
       setRouteInput("");
 
@@ -87,27 +107,30 @@ function DriverCreateShareRide() {
   };
 
 
-  const removeRoute = (city) => {
-    setRoute(route.filter(r => r !== city));
+  const removeRoute = (index) => {
+
+    const updated = [...route];
+    updated.splice(index,1);
+    setRoute(updated);
+
   };
 
 
   const createRide = async () => {
 
-    const routeCities = route.map(city => ({ city }));
-
     const rideData = {
 
       driver: driver._id,
+
       vehicleType,
       vehicleNumber,
 
-      pickup: { city: pickup },
-      drop: { city: drop },
+      pickup,
+      drop,
 
-      route: routeCities,
+      route,
 
-      price,
+      totalPrice,
       seats,
       availableSeats: seats,
 
@@ -130,13 +153,13 @@ function DriverCreateShareRide() {
 
       setSuccess(true);
 
-      setPickup("");
-      setDrop("");
+      setPickup({});
+      setDrop({});
       setRoute([]);
       setRouteInput("");
       setVehicleType("");
       setVehicleNumber("");
-      setPrice("");
+      setTotalPrice("");
       setSeats("");
       setDate("");
       setTime("");
@@ -167,7 +190,7 @@ function DriverCreateShareRide() {
         )}
 
 
-        {/* LOCATION SECTION */}
+        {/* ROUTE SECTION */}
 
         <h3 className="text-lg font-semibold mb-3 text-gray-700">
           Route Details
@@ -176,17 +199,13 @@ function DriverCreateShareRide() {
         <input
           ref={pickupRef}
           placeholder="Pickup Location"
-          value={pickup}
-          onChange={(e)=>setPickup(e.target.value)}
-          className="border p-3 w-full mb-3 rounded focus:ring-2 focus:ring-green-400"
+          className="border p-3 w-full mb-3 rounded"
         />
 
         <input
           ref={dropRef}
           placeholder="Drop Location"
-          value={drop}
-          onChange={(e)=>setDrop(e.target.value)}
-          className="border p-3 w-full mb-3 rounded focus:ring-2 focus:ring-green-400"
+          className="border p-3 w-full mb-3 rounded"
         />
 
 
@@ -201,20 +220,23 @@ function DriverCreateShareRide() {
         <div className="flex flex-wrap gap-2 mb-6">
 
           {route.map((city,index)=>(
+
             <div
               key={index}
               className="bg-green-200 px-3 py-1 rounded-full flex items-center gap-2"
             >
-              {city}
+
+              {city.city}
 
               <button
-                onClick={()=>removeRoute(city)}
+                onClick={()=>removeRoute(index)}
                 className="text-red-600 font-bold"
               >
                 ×
               </button>
 
             </div>
+
           ))}
 
         </div>
@@ -229,14 +251,14 @@ function DriverCreateShareRide() {
         <div className="grid grid-cols-2 gap-4 mb-4">
 
           <input
-            placeholder="Vehicle Type (Swift)"
+            placeholder="Vehicle Name"
             value={vehicleType}
             onChange={(e)=>setVehicleType(e.target.value)}
             className="border p-3 rounded"
           />
 
           <input
-            placeholder="Vehicle Number (HR06AB1234)"
+            placeholder="Vehicle Number"
             value={vehicleNumber}
             onChange={(e)=>setVehicleNumber(e.target.value.toUpperCase())}
             className="border p-3 rounded"
@@ -263,9 +285,9 @@ function DriverCreateShareRide() {
 
           <input
             type="number"
-            placeholder="Price per passenger"
-            value={price}
-            onChange={(e)=>setPrice(e.target.value)}
+            placeholder="Total Ride Price"
+            value={totalPrice}
+            onChange={(e)=>setTotalPrice(e.target.value)}
             className="border p-3 rounded"
           />
 
@@ -286,11 +308,9 @@ function DriverCreateShareRide() {
         </div>
 
 
-        {/* BUTTON */}
-
         <button
           onClick={createRide}
-          className="bg-green-600 hover:bg-green-700 transition text-white w-full py-3 rounded-lg text-lg font-semibold"
+          className="bg-green-600 hover:bg-green-700 text-white w-full py-3 rounded-lg text-lg font-semibold"
         >
           Post Ride
         </button>

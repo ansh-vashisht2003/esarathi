@@ -17,10 +17,11 @@ const shareRideSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+
   date: {
-  type: String,
-  required: true
-},
+    type: String,
+    required: true
+  },
 
   pickup: {
     city: String,
@@ -42,11 +43,27 @@ const shareRideSchema = new mongoose.Schema({
     }
   ],
 
-  price: Number,
+  totalPrice: {
+    type: Number,
+    required: true
+  },
 
-  seats: Number,
+  totalDistance: {
+    type: Number
+  },
 
-  availableSeats: Number,
+  pricePerKm: {
+    type: Number
+  },
+
+  seats: {
+    type: Number,
+    required: true
+  },
+
+  availableSeats: {
+    type: Number
+  },
 
   passengers: [
     {
@@ -61,6 +78,14 @@ const shareRideSchema = new mongoose.Schema({
     type: String,
     default: "active"
   },
+
+  segments: [
+    {
+      from: String,
+      to: String,
+      seatsUsed: Number
+    }
+  ],
 
   createdAt: {
     type: Date,

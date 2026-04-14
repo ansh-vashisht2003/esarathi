@@ -4,12 +4,14 @@ import sendEmail from "../utils/sendEmail.js";
 
 /* =========================
    TRAVELLER SIGNUP → SEND OTP + LOGIN DETAILS
-   ========================= */
+========================= */
 export const signupTraveller = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
+    // ⭐ phone added here
+    const { name, email, phone, password } = req.body;
+
+    if (!name || !email || !phone || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -27,6 +29,7 @@ export const signupTraveller = async (req, res) => {
     await Traveller.create({
       name,
       email,
+      phone, // ⭐ phone stored in DB
       password: hashedPassword,
       signupOTP: otp,
       otpExpiry: Date.now() + 10 * 60 * 1000,
@@ -61,15 +64,17 @@ ${otp}
       success: true,
       message: "Signup successful. OTP and login details sent to email.",
     });
+
   } catch (error) {
     console.error("SIGNUP ERROR:", error);
     res.status(500).json({ message: "Signup failed" });
   }
 };
 
+
 /* =========================
    VERIFY SIGNUP OTP
-   ========================= */
+========================= */
 export const verifySignupOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -91,25 +96,30 @@ export const verifySignupOTP = async (req, res) => {
     await user.save();
 
     res.json({ success: true, message: "Email verified successfully" });
+
   } catch (error) {
     console.error("VERIFY OTP ERROR:", error);
     res.status(500).json({ message: "Verification failed" });
   }
 };
 
+
 /* =========================
    FORGOT PASSWORD → SEND OTP
-   ========================= */
+========================= */
 export const forgotPassword = async (req, res) => {
   try {
+
     const { email } = req.body;
 
     const user = await Traveller.findOne({ email });
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000);
+
     user.resetOTP = otp;
     user.otpExpiry = Date.now() + 10 * 60 * 1000;
 
@@ -122,17 +132,20 @@ export const forgotPassword = async (req, res) => {
     );
 
     res.json({ success: true, message: "OTP sent to email" });
+
   } catch (error) {
     console.error("FORGOT PASSWORD ERROR:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
 
+
 /* =========================
    RESET PASSWORD
-   ========================= */
+========================= */
 export const resetPassword = async (req, res) => {
   try {
+
     const { email, otp, newPassword } = req.body;
 
     const user = await Traveller.findOne({ email });
@@ -152,20 +165,24 @@ export const resetPassword = async (req, res) => {
     await user.save();
 
     res.json({ success: true, message: "Password reset successful" });
+
   } catch (error) {
     console.error("RESET PASSWORD ERROR:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
 
+
 /* =========================
    TRAVELLER LOGIN
-   ========================= */
+========================= */
 export const loginTraveller = async (req, res) => {
   try {
+
     const { email, password } = req.body;
 
     const user = await Traveller.findOne({ email });
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -175,6 +192,7 @@ export const loginTraveller = async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
@@ -185,11 +203,12 @@ export const loginTraveller = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone // ⭐ return phone also
       },
     });
+
   } catch (error) {
     console.error("LOGIN ERROR:", error);
     res.status(500).json({ message: "Login failed" });
   }
 };
-

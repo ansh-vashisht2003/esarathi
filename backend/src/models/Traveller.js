@@ -6,7 +6,10 @@ const travellerSchema = new mongoose.Schema({
   password: { type: String, required: true },
 
   profilePic: { type: String }, // filename
-
+phone: {
+  type: String,
+  required: false
+},
   isVerified: { type: Boolean, default: false },
   signupOTP: Number,
   otpExpiry: Date,
