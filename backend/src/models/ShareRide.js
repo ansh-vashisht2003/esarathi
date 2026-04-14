@@ -43,6 +43,8 @@ const shareRideSchema = new mongoose.Schema({
     }
   ],
 
+  /* PRICE SYSTEM */
+
   totalPrice: {
     type: Number,
     required: true
@@ -71,7 +73,17 @@ const shareRideSchema = new mongoose.Schema({
       ref: "Traveller"
     }
   ],
-
+bookings: [
+  {
+    traveller: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Traveller"
+    },
+    phone: String,
+    seats: Number,
+    passengerNames: [String]
+  }
+],
   time: String,
 
   status: {
@@ -79,18 +91,17 @@ const shareRideSchema = new mongoose.Schema({
     default: "active"
   },
 
-  segments: [
-    {
-      from: String,
-      to: String,
-      seatsUsed: Number
-    }
-  ],
-
   createdAt: {
     type: Date,
     default: Date.now
+  }, 
+  segments: [
+  {
+    from: String,
+    to: String,
+    seatsUsed: Number
   }
+]
 
 });
 

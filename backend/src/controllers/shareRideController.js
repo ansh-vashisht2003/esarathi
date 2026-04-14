@@ -122,10 +122,27 @@ export const searchSharedRides = async (req, res) => {
         c.includes(drop.toLowerCase())
       );
 
-      return pickupIndex !== -1 &&
-        dropIndex !== -1 &&
-        pickupIndex < dropIndex;
+      if (
+  pickupIndex !== -1 &&
+  dropIndex !== -1 &&
+  pickupIndex < dropIndex
+) {
 
+  let maxSeatsUsed = 0;
+
+  for (let i = pickupIndex; i < dropIndex; i++) {
+    if (ride.segments[i].seatsUsed > maxSeatsUsed) {
+      maxSeatsUsed = ride.segments[i].seatsUsed;
+    }
+  }
+
+  ride.availableSeats = ride.seats - maxSeatsUsed;
+
+  return ride.availableSeats > 0;
+
+}
+
+return false;
     });
 
     res.json(validRides);
@@ -192,15 +209,21 @@ export const joinRide = async (req, res) => {
 
     const seatCount = Number(seats);
 
+    if (!passengerNames || passengerNames.length !== seatCount) {
+      return res.json({
+        message: "Please enter all passenger names"
+      });
+    }
 
-    /* CHECK SEAT AVAILABILITY */
+
+    /* CHECK SEGMENT SEAT AVAILABILITY */
 
     for (let i = pickupIndex; i < dropIndex; i++) {
 
       if (ride.segments[i].seatsUsed + seatCount > ride.seats) {
 
         return res.json({
-          message: "Not enough seats available"
+          message: "Not enough seats available for this segment"
         });
 
       }
@@ -220,13 +243,25 @@ export const joinRide = async (req, res) => {
     /* ADD PASSENGERS */
 
     for (let i = 0; i < seatCount; i++) {
-
       ride.passengers.push(traveller._id);
-
     }
 
 
-    ride.availableSeats -= seatCount;
+    /* STORE BOOKING DETAILS */
+
+    ride.bookings.push({
+      traveller: traveller._id,
+      phone: traveller.phone,
+      seats: seatCount,
+      passengerNames
+    });
+
+
+    /* UPDATE AVAILABLE SEATS BASED ON SEGMENTS */
+
+    const maxSeatsUsed = Math.max(...ride.segments.map(s => s.seatsUsed));
+
+    ride.availableSeats = ride.seats - maxSeatsUsed;
 
 
     /* PRICE CALCULATION */

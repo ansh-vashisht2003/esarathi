@@ -20,6 +20,14 @@ export default function TravellerCabShare() {
   const [passengerCount, setPassengerCount] = useState(1);
   const [passengerNames, setPassengerNames] = useState([]);
 
+  /* KEEP PASSENGER NAMES LENGTH MATCHING PASSENGER COUNT */
+
+  useEffect(() => {
+    setPassengerNames((prev) => prev.slice(0, passengerCount));
+  }, [passengerCount]);
+
+
+
   /* GOOGLE AUTOCOMPLETE */
 
   useEffect(() => {
@@ -47,6 +55,7 @@ export default function TravellerCabShare() {
   }, []);
 
 
+
   /* SEARCH RIDES */
 
   const searchRides = async () => {
@@ -66,6 +75,7 @@ export default function TravellerCabShare() {
     setLoading(false);
 
   };
+
 
 
   /* PRICE CALCULATION */
@@ -101,7 +111,9 @@ export default function TravellerCabShare() {
       passengerDistance * (ride.pricePerKm || 0) * passengerCount;
 
     return Math.round(price);
+
   };
+
 
 
   /* JOIN RIDE */
@@ -132,14 +144,18 @@ export default function TravellerCabShare() {
     const data = await res.json();
 
     alert(
-      `${data.message}
+`${data.message}
 Seats Booked: ${passengerCount}
 Total Price: ₹${data.price}`
     );
 
+    setPassengerCount(1);
+    setPassengerNames([]);
+
     searchRides();
 
   };
+
 
 
   return (
@@ -147,6 +163,7 @@ Total Price: ₹${data.price}`
     <div className="bg-gray-100 min-h-screen">
 
       <TravellerNavbar travellerName={travellerName} />
+
 
       {/* SEARCH BOX */}
 
@@ -184,6 +201,7 @@ Total Price: ₹${data.price}`
         </button>
 
       </div>
+
 
 
       {/* RIDE LIST */}
@@ -251,7 +269,9 @@ Total Price: ₹${data.price}`
               <span className="font-semibold">{passengerCount}</span>
 
               <button
-                onClick={()=>setPassengerCount(passengerCount+1)}
+                onClick={()=>setPassengerCount(
+                  Math.min(ride.availableSeats, passengerCount + 1)
+                )}
                 className="px-3 py-1 bg-gray-200 rounded"
               >
                 +
@@ -272,6 +292,7 @@ Total Price: ₹${data.price}`
 
                 <input
                   key={i}
+                  value={passengerNames[i] || ""}
                   placeholder={`Passenger ${i+1} name`}
                   className="border p-2 w-full mb-2 rounded"
                   onChange={(e)=>{

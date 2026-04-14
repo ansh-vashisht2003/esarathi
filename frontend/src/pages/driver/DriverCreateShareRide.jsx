@@ -28,6 +28,7 @@ function DriverCreateShareRide() {
   const [success, setSuccess] = useState(false);
 
 
+
   /* GOOGLE MAP LOAD */
 
   useEffect(() => {
@@ -39,8 +40,9 @@ function DriverCreateShareRide() {
 
     const script = document.createElement("script");
 
-  script.src =
+    script.src =
 "https://maps.googleapis.com/maps/api/js?key=AIzaSyDwaSxjJlJvRtRfLCUk0Bw4BLy3QUJk4KI&libraries=places";
+
     script.async = true;
 
     script.onload = () => initAutocomplete();
@@ -54,6 +56,8 @@ function DriverCreateShareRide() {
   const initAutocomplete = () => {
 
     if (!window.google) return;
+
+    /* PICKUP */
 
     const pickupAuto = new window.google.maps.places.Autocomplete(pickupRef.current);
 
@@ -70,6 +74,9 @@ function DriverCreateShareRide() {
     });
 
 
+
+    /* DROP */
+
     const dropAuto = new window.google.maps.places.Autocomplete(dropRef.current);
 
     dropAuto.addListener("place_changed", () => {
@@ -85,26 +92,38 @@ function DriverCreateShareRide() {
     });
 
 
+
+    /* ROUTE */
+
     const routeAuto = new window.google.maps.places.Autocomplete(routeRef.current);
 
     routeAuto.addListener("place_changed", () => {
 
       const place = routeAuto.getPlace();
 
-      setRoute(prev => [
-        ...prev,
-        {
-          city: place.formatted_address,
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng()
+      setRoute(prev => {
+
+        if (prev.some(r => r.city === place.formatted_address)) {
+          return prev;
         }
-      ]);
+
+        return [
+          ...prev,
+          {
+            city: place.formatted_address,
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
+          }
+        ];
+
+      });
 
       setRouteInput("");
 
     });
 
   };
+
 
 
   const removeRoute = (index) => {
@@ -116,7 +135,25 @@ function DriverCreateShareRide() {
   };
 
 
+
   const createRide = async () => {
+
+    /* BASIC VALIDATION */
+
+    if (!pickup.city || !drop.city) {
+      alert("Please select pickup and drop location");
+      return;
+    }
+
+    if (!vehicleType || !vehicleNumber) {
+      alert("Please enter vehicle details");
+      return;
+    }
+
+    if (!seats || !totalPrice) {
+      alert("Please enter seats and price");
+      return;
+    }
 
     const rideData = {
 
@@ -157,10 +194,13 @@ function DriverCreateShareRide() {
       setDrop({});
       setRoute([]);
       setRouteInput("");
+
       setVehicleType("");
       setVehicleNumber("");
+
       setTotalPrice("");
       setSeats("");
+
       setDate("");
       setTime("");
 
@@ -169,6 +209,7 @@ function DriverCreateShareRide() {
     }
 
   };
+
 
 
   return (
@@ -198,13 +239,17 @@ function DriverCreateShareRide() {
 
         <input
           ref={pickupRef}
+          value={pickup.city || ""}
           placeholder="Pickup Location"
+          onChange={(e)=>setPickup({ ...pickup, city:e.target.value })}
           className="border p-3 w-full mb-3 rounded"
         />
 
         <input
           ref={dropRef}
+          value={drop.city || ""}
           placeholder="Drop Location"
+          onChange={(e)=>setDrop({ ...drop, city:e.target.value })}
           className="border p-3 w-full mb-3 rounded"
         />
 
@@ -216,6 +261,7 @@ function DriverCreateShareRide() {
           onChange={(e)=>setRouteInput(e.target.value)}
           className="border p-3 w-full mb-2 rounded"
         />
+
 
         <div className="flex flex-wrap gap-2 mb-6">
 
@@ -242,6 +288,7 @@ function DriverCreateShareRide() {
         </div>
 
 
+
         {/* VEHICLE SECTION */}
 
         <h3 className="text-lg font-semibold mb-3 text-gray-700">
@@ -265,6 +312,7 @@ function DriverCreateShareRide() {
           />
 
         </div>
+
 
 
         {/* RIDE INFO */}
@@ -306,6 +354,7 @@ function DriverCreateShareRide() {
           />
 
         </div>
+
 
 
         <button
