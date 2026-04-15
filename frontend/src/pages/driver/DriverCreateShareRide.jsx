@@ -27,6 +27,8 @@ function DriverCreateShareRide() {
 
   const [success, setSuccess] = useState(false);
 
+  const [bookedPassengers, setBookedPassengers] = useState([]);
+
 
 
   /* GOOGLE MAP LOAD */
@@ -53,11 +55,37 @@ function DriverCreateShareRide() {
 
 
 
+  /* LOAD BOOKINGS */
+
+  useEffect(() => {
+
+    loadBookings();
+
+  }, []);
+
+
+  const loadBookings = async () => {
+
+    try {
+
+      const res = await fetch(`${API}/driver/${driver._id}`);
+      const data = await res.json();
+
+      setBookedPassengers(data || []);
+
+    } catch (err) {
+
+      console.log(err);
+
+    }
+
+  };
+
+
+
   const initAutocomplete = () => {
 
     if (!window.google) return;
-
-    /* PICKUP */
 
     const pickupAuto = new window.google.maps.places.Autocomplete(pickupRef.current);
 
@@ -75,8 +103,6 @@ function DriverCreateShareRide() {
 
 
 
-    /* DROP */
-
     const dropAuto = new window.google.maps.places.Autocomplete(dropRef.current);
 
     dropAuto.addListener("place_changed", () => {
@@ -92,8 +118,6 @@ function DriverCreateShareRide() {
     });
 
 
-
-    /* ROUTE */
 
     const routeAuto = new window.google.maps.places.Autocomplete(routeRef.current);
 
@@ -138,8 +162,6 @@ function DriverCreateShareRide() {
 
   const createRide = async () => {
 
-    /* BASIC VALIDATION */
-
     if (!pickup.city || !drop.city) {
       alert("Please select pickup and drop location");
       return;
@@ -158,19 +180,14 @@ function DriverCreateShareRide() {
     const rideData = {
 
       driver: driver._id,
-
       vehicleType,
       vehicleNumber,
-
       pickup,
       drop,
-
       route,
-
       totalPrice,
       seats,
       availableSeats: seats,
-
       date,
       time
 
@@ -230,7 +247,6 @@ function DriverCreateShareRide() {
           </div>
         )}
 
-
         {/* ROUTE SECTION */}
 
         <h3 className="text-lg font-semibold mb-3 text-gray-700">
@@ -253,7 +269,6 @@ function DriverCreateShareRide() {
           className="border p-3 w-full mb-3 rounded"
         />
 
-
         <input
           ref={routeRef}
           placeholder="Add Route Stop"
@@ -261,7 +276,6 @@ function DriverCreateShareRide() {
           onChange={(e)=>setRouteInput(e.target.value)}
           className="border p-3 w-full mb-2 rounded"
         />
-
 
         <div className="flex flex-wrap gap-2 mb-6">
 
@@ -288,8 +302,7 @@ function DriverCreateShareRide() {
         </div>
 
 
-
-        {/* VEHICLE SECTION */}
+        {/* VEHICLE */}
 
         <h3 className="text-lg font-semibold mb-3 text-gray-700">
           Vehicle Details
@@ -312,7 +325,6 @@ function DriverCreateShareRide() {
           />
 
         </div>
-
 
 
         {/* RIDE INFO */}
@@ -356,13 +368,77 @@ function DriverCreateShareRide() {
         </div>
 
 
-
         <button
           onClick={createRide}
           className="bg-green-600 hover:bg-green-700 text-white w-full py-3 rounded-lg text-lg font-semibold"
         >
           Post Ride
         </button>
+
+
+        {/* PASSENGER BOOKINGS */}
+
+        <div className="mt-10">
+
+          <h3 className="text-xl font-bold text-green-700 mb-4">
+            👥 Passenger Bookings
+          </h3>
+
+          {bookedPassengers.length === 0 ? (
+
+            <p className="text-gray-500">No passengers booked yet</p>
+
+          ) : (
+
+            bookedPassengers.map((ride) => (
+
+              <div
+                key={ride._id}
+                className="border rounded-xl p-5 mb-6 bg-green-50"
+              >
+
+                <div className="mb-4 border-b pb-2">
+
+                  <p className="font-bold text-lg text-green-800">
+                    🚗 {ride.pickup.city} → {ride.drop.city}
+                  </p>
+
+                  <p className="text-sm text-gray-600">
+                    📅 {ride.date} | ⏰ {ride.time}
+                  </p>
+
+                </div>
+
+                {ride.bookings?.map((b, index) => (
+
+                  <div
+                    key={index}
+                    className="bg-white border rounded-lg p-4 mb-3"
+                  >
+
+                    <p className="font-semibold text-gray-800">
+                      Passenger: {b.passengerNames?.join(", ")}
+                    </p>
+
+                    <p>📞 Phone: {b.phone}</p>
+
+                    <p>🪑 Seats: {b.seats}</p>
+
+                    <p>📍 Pickup: {b.pickupCity}</p>
+
+                    <p>🏁 Drop: {b.dropCity}</p>
+
+                  </div>
+
+                ))}
+
+              </div>
+
+            ))
+
+          )}
+
+        </div>
 
       </div>
 

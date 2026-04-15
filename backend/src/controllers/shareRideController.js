@@ -123,26 +123,27 @@ export const searchSharedRides = async (req, res) => {
       );
 
       if (
-  pickupIndex !== -1 &&
-  dropIndex !== -1 &&
-  pickupIndex < dropIndex
-) {
+        pickupIndex !== -1 &&
+        dropIndex !== -1 &&
+        pickupIndex < dropIndex
+      ) {
 
-  let maxSeatsUsed = 0;
+        let maxSeatsUsed = 0;
 
-  for (let i = pickupIndex; i < dropIndex; i++) {
-    if (ride.segments[i].seatsUsed > maxSeatsUsed) {
-      maxSeatsUsed = ride.segments[i].seatsUsed;
-    }
-  }
+        for (let i = pickupIndex; i < dropIndex; i++) {
+          if (ride.segments[i].seatsUsed > maxSeatsUsed) {
+            maxSeatsUsed = ride.segments[i].seatsUsed;
+          }
+        }
 
-  ride.availableSeats = ride.seats - maxSeatsUsed;
+        ride.availableSeats = ride.seats - maxSeatsUsed;
 
-  return ride.availableSeats > 0;
+        return ride.availableSeats > 0;
 
-}
+      }
 
-return false;
+      return false;
+
     });
 
     res.json(validRides);
@@ -181,16 +182,12 @@ export const joinRide = async (req, res) => {
       return res.json({ message: "Traveller not found" });
 
 
-    /* ALL CITIES */
-
     const cities = [
       ride.pickup.city,
       ...ride.route.map(r => r.city),
       ride.drop.city
     ];
 
-
-    /* FIND PICKUP & DROP INDEX */
 
     const pickupIndex = cities.findIndex(c =>
       c.toLowerCase().includes(pickup.toLowerCase())
@@ -253,18 +250,16 @@ export const joinRide = async (req, res) => {
       traveller: traveller._id,
       phone: traveller.phone,
       seats: seatCount,
-      passengerNames
+      passengerNames,
+      pickupCity: cities[pickupIndex],
+      dropCity: cities[dropIndex]
     });
 
-
-    /* UPDATE AVAILABLE SEATS BASED ON SEGMENTS */
 
     const maxSeatsUsed = Math.max(...ride.segments.map(s => s.seatsUsed));
 
     ride.availableSeats = ride.seats - maxSeatsUsed;
 
-
-    /* PRICE CALCULATION */
 
     const segmentCount = dropIndex - pickupIndex;
 
@@ -369,6 +364,8 @@ export const travellerCancelRide = async (req, res) => {
 
 };
 
+
+
 export const getTravellerShareRideHistory = async (req, res) => {
 
   try {
@@ -378,7 +375,7 @@ export const getTravellerShareRideHistory = async (req, res) => {
     const today = new Date().toISOString().split("T")[0];
 
     const rides = await ShareRide.find({
-      date: { $lt: today }   // ride date already finished
+      date: { $lt: today }
     })
       .populate("driver", "name vehicleNumber")
       .sort({ date: -1 });
@@ -393,6 +390,8 @@ export const getTravellerShareRideHistory = async (req, res) => {
 
 };
 
+
+
 export const getDriverUpcomingShareRides = async (req, res) => {
 
   try {
@@ -404,8 +403,8 @@ export const getDriverUpcomingShareRides = async (req, res) => {
     const rides = await ShareRide.find({
       date: { $gte: today }
     })
-    .populate("driver", "name email vehicleNumber")
-    .sort({ date: 1 });
+      .populate("driver", "name email vehicleNumber")
+      .sort({ date: 1 });
 
     res.json(rides);
 

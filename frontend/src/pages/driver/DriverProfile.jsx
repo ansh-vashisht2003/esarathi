@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaCar, FaUsers, FaLock, FaCamera, FaSignOutAlt, FaWallet, FaCheckCircle } from "react-icons/fa";
+import { FaCar, FaUsers, FaLock, FaCamera, FaSignOutAlt, FaWallet, FaCheckCircle, FaHome } from "react-icons/fa";
 
 const API_BASE = "http://localhost:5000";
 
@@ -117,10 +117,18 @@ const DriverProfile = () => {
       {/* HEADER NAVBAR */}
       <div className="bg-green-700 text-white p-4 shadow-md mb-6">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold tracking-tight">E-Sarathi Driver Dashboard</h1>
-          <button onClick={logout} className="flex items-center gap-2 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition text-sm font-semibold">
-            <FaSignOutAlt /> Logout
-          </button>
+          <h1 className="text-2xl font-bold tracking-tight">E-Sarathi Driver Profile</h1>
+          <div className="flex gap-3">
+            <button 
+              onClick={() => navigate("/driver/dashboard")} 
+              className="flex items-center gap-2 bg-green-800 hover:bg-green-900 px-4 py-2 rounded-lg transition text-sm font-semibold border border-green-600 shadow-sm"
+            >
+              <FaHome /> Dashboard
+            </button>
+            <button onClick={logout} className="flex items-center gap-2 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition text-sm font-semibold shadow-sm">
+              <FaSignOutAlt /> Logout
+            </button>
+          </div>
         </div>
       </div>
 

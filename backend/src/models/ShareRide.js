@@ -74,15 +74,18 @@ const shareRideSchema = new mongoose.Schema({
     }
   ],
 bookings: [
-  {
-    traveller: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Traveller"
-    },
-    phone: String,
-    seats: Number,
-    passengerNames: [String]
-  }
+{
+  traveller: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Traveller"
+  },
+  phone: String,
+  seats: Number,
+  passengerNames: [String],
+
+  pickupCity: String,
+  dropCity: String
+}
 ],
   time: String,
 

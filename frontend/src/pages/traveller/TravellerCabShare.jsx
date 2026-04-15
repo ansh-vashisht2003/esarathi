@@ -340,3 +340,4 @@ Total Price: ₹${data.price}`
   );
 
 }
+
