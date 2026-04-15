@@ -28,6 +28,7 @@ const DriverSoloTrips = () => {
   });
 
   const mapRef = useRef(null);
+  const driverMarkerRef = useRef(null);
 
   const [rides, setRides] = useState([]);
   const [selectedRide, setSelectedRide] = useState(null);
@@ -35,6 +36,36 @@ const DriverSoloTrips = () => {
   const [directions, setDirections] = useState(null);
   const [rideCode, setRideCode] = useState("");
   const [rideStarted, setRideStarted] = useState(false);
+
+  /* -------- SMOOTH DRIVER MOVEMENT -------- */
+
+  const animateMarker = (newLoc) => {
+
+    if (!driverLoc) {
+      setDriverLoc(newLoc);
+      return;
+    }
+
+    const frames = 30;
+    const latStep = (newLoc.lat - driverLoc.lat) / frames;
+    const lngStep = (newLoc.lng - driverLoc.lng) / frames;
+
+    let i = 0;
+
+    const interval = setInterval(() => {
+
+      i++;
+
+      setDriverLoc(prev => ({
+        lat: prev.lat + latStep,
+        lng: prev.lng + lngStep
+      }));
+
+      if (i >= frames) clearInterval(interval);
+
+    }, 50);
+
+  };
 
   /* ---------------- DRIVER LOCATION ---------------- */
 
@@ -51,19 +82,17 @@ const DriverSoloTrips = () => {
 
       (pos) => {
 
-        const { latitude, longitude } = pos.coords;
-
         const loc = {
-          lat: latitude,
-          lng: longitude
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
         };
 
         setDriverLoc(loc);
 
         socket.emit("driverOnline", {
           email: driver.email,
-          lat: latitude,
-          lng: longitude
+          lat: loc.lat,
+          lng: loc.lng
         });
 
       },
@@ -72,9 +101,7 @@ const DriverSoloTrips = () => {
         console.log("GPS Error", err);
       },
 
-      {
-        enableHighAccuracy: true
-      }
+      { enableHighAccuracy: true }
 
     );
 
@@ -82,19 +109,17 @@ const DriverSoloTrips = () => {
 
       (pos) => {
 
-        const { latitude, longitude } = pos.coords;
-
         const loc = {
-          lat: latitude,
-          lng: longitude
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
         };
 
-        setDriverLoc(loc);
+        animateMarker(loc);
 
         socket.emit("driverOnline", {
           email: driver.email,
-          lat: latitude,
-          lng: longitude
+          lat: loc.lat,
+          lng: loc.lng
         });
 
       },
@@ -161,17 +186,13 @@ const DriverSoloTrips = () => {
     loadRides();
 
     socket.on("newRideRequest", (ride) => {
-
       setRides(prev => [ride, ...prev]);
-
     });
 
     socket.on("rideAccepted", (rideId) => {
-
       setRides(prev =>
         prev.filter(r => r._id !== rideId)
       );
-
     });
 
     return () => {
@@ -202,21 +223,16 @@ const DriverSoloTrips = () => {
       : { lat: selectedRide.drop.lat, lng: selectedRide.drop.lng };
 
     directionsService.route(
-
       {
         origin,
         destination,
         travelMode: "DRIVING"
       },
-
       (result, status) => {
-
         if (status === "OK") {
           setDirections(result);
         }
-
       }
-
     );
 
   }, [driverLoc, selectedRide, rideStarted, isLoaded]);
@@ -228,33 +244,26 @@ const DriverSoloTrips = () => {
   const acceptRide = async (rideId) => {
 
     const res = await fetch(`${API}/accept`, {
-
       method: "POST",
-
       headers: {
         "Content-Type": "application/json"
       },
-
       body: JSON.stringify({
         rideId,
         driverEmail: driver.email
       })
-
     });
 
     const data = await res.json();
 
     if (data.message) {
-
       alert(data.message);
       return;
-
     }
 
     alert("Ride Accepted");
 
     setSelectedRide(data);
-
     setRides([]);
 
   };
@@ -266,17 +275,13 @@ const DriverSoloTrips = () => {
   const startRide = async () => {
 
     const res = await fetch(`${API}/start`, {
-
       method: "POST",
-
       headers: {
         "Content-Type": "application/json"
       },
-
       body: JSON.stringify({
         rideCode
       })
-
     });
 
     const data = await res.json();
@@ -284,7 +289,6 @@ const DriverSoloTrips = () => {
     if (data.message === "Ride started") {
 
       alert("Ride Started");
-
       setRideStarted(true);
 
     } else {
@@ -358,8 +362,6 @@ const DriverSoloTrips = () => {
         </GoogleMap>
 
       </div>
-
-
 
       {/* DRIVER PANEL */}
 

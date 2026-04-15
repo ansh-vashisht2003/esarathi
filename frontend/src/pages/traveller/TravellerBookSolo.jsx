@@ -416,13 +416,27 @@ export default function TravellerBookSolo() {
           <button
             onClick={async () => {
 
-              await fetch(`${API}/complete`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ rideId: currentRide._id })
-              });
+  await fetch(`${API}/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rideId: currentRide._id })
+  });
 
-              alert("Ride Completed");
+  alert("Ride Completed");
+
+  // RESET PAGE STATE
+  setCurrentRide(null);
+  setDriver(null);
+  setRideCode("");
+  setRideStarted(false);
+  setDirections(null);
+  setDistance(0);
+  setEta(0);
+  setPrice(0);
+  setDropCoords(null);
+  setDropText("");
+
+
 
             }}
             className="bg-green-600 text-white px-6 py-2 rounded-lg mt-4"

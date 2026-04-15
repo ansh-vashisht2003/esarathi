@@ -42,10 +42,8 @@ await connectDB();
    ROUTES
 ================================ */
 
-app.use("/api/ride", rideRoutes);
 app.use("/api/rides", rideRoutes);
 app.use("/api/share-rides", shareRideRoutes);
-
 
 
 /* ===============================

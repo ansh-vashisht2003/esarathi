@@ -241,3 +241,26 @@ export const cancelRide = async (req, res) => {
   }
 
 };
+
+/* GET TRAVELLER RIDE HISTORY */
+
+export const getTravellerRides = async (req, res) => {
+
+  try {
+
+    const { email } = req.params;
+
+    const rides = await Ride.find({
+      "traveller.email": email,
+      status: "COMPLETED"
+    }).sort({ createdAt: -1 });
+
+    res.json(rides);
+
+  } catch (err) {
+
+    res.status(500).json({ message: err.message });
+
+  }
+
+};
