@@ -62,16 +62,42 @@ export default function TravellerBookSolo() {
   const [eta, setEta] = useState(0);
   const [price, setPrice] = useState(0);
 
-  const [surge, setSurge] = useState(1);
   const [showTraffic, setShowTraffic] = useState(true);
 
-  /* -------- CURRENT LOCATION -------- */
+  const [currentRide, setCurrentRide] = useState(null);
+  const [driver, setDriver] = useState(null);
+  const [rideCode, setRideCode] = useState("");
+  const [rideStarted, setRideStarted] = useState(false);
+
+  /* SOCKET EVENTS */
 
   useEffect(() => {
 
-  navigator.geolocation.getCurrentPosition(
+    if (!traveller?.email) return;
 
-    (pos) => {
+    socket.emit("joinTraveller", traveller.email);
+
+    socket.on("rideDriverAssigned", (data) => {
+      setDriver(data.driver);
+      setRideCode(data.rideCode);
+    });
+
+    socket.on("rideStarted", () => {
+      setRideStarted(true);
+    });
+
+    return () => {
+      socket.off("rideDriverAssigned");
+      socket.off("rideStarted");
+    };
+
+  }, []);
+
+  /* CURRENT LOCATION */
+
+  useEffect(() => {
+
+    navigator.geolocation.getCurrentPosition((pos) => {
 
       const { latitude, longitude } = pos.coords;
 
@@ -82,39 +108,21 @@ export default function TravellerBookSolo() {
 
       setPickupCoords(coords);
 
-      /* convert lat lng → real address */
-
       const geocoder = new window.google.maps.Geocoder();
 
       geocoder.geocode({ location: coords }, (results, status) => {
 
         if (status === "OK" && results[0]) {
-
           setPickupText(results[0].formatted_address);
-
-        } else {
-
-          setPickupText("Unknown Location");
-
         }
 
       });
 
-    },
+    });
 
-    (err) => {
-      console.log("GPS error:", err);
-    },
+  }, []);
 
-    {
-      enableHighAccuracy: true
-    }
-
-  );
-
-}, []);
-
-  /* -------- PICKUP CHANGE -------- */
+  /* PICKUP SELECT */
 
   const pickupChanged = () => {
 
@@ -131,9 +139,10 @@ export default function TravellerBookSolo() {
     });
 
     setPickupText(place.formatted_address || place.name);
+
   };
 
-  /* -------- DESTINATION CHANGE -------- */
+  /* DROP SELECT */
 
   const dropChanged = () => {
 
@@ -150,9 +159,10 @@ export default function TravellerBookSolo() {
     });
 
     setDropText(place.formatted_address || place.name);
+
   };
 
-  /* -------- ROUTE + SURGE CALCULATION -------- */
+  /* ROUTE + FARE */
 
   useEffect(() => {
 
@@ -180,23 +190,8 @@ export default function TravellerBookSolo() {
           setDistance(km.toFixed(2));
           setEta(Math.ceil(minutes));
 
-          /* -------- SURGE CALCULATION -------- */
-
-          let surgeMultiplier = 1;
-
-          const hour = new Date().getHours();
-
-          if (hour >= 8 && hour <= 10) surgeMultiplier += 0.3;
-          if (hour >= 18 && hour <= 21) surgeMultiplier += 0.3;
-
-          if (minutes / km > 3) surgeMultiplier += 0.5;
-          else if (minutes / km > 2) surgeMultiplier += 0.2;
-
-          setSurge(surgeMultiplier);
-
           const rate = vehicleRates[vehicle];
-
-          const finalFare = km * rate * surgeMultiplier;
+          const finalFare = km * rate;
 
           setPrice(Math.ceil(finalFare));
 
@@ -207,7 +202,7 @@ export default function TravellerBookSolo() {
 
   }, [pickupCoords, dropCoords, vehicle, isLoaded]);
 
-  /* -------- BOOK RIDE -------- */
+  /* BOOK RIDE */
 
   const bookRide = async () => {
 
@@ -245,7 +240,8 @@ export default function TravellerBookSolo() {
 
     const ride = await res.json();
 
-    socket.emit("rideRequest", ride);
+    setCurrentRide(ride);
+
   };
 
   if (!isLoaded) return <div className="p-10">Loading Map...</div>;
@@ -256,7 +252,7 @@ export default function TravellerBookSolo() {
 
       <TravellerNavbar travellerName={travellerName} />
 
-      {/* SEARCH CARD */}
+      {/* PICKUP + DESTINATION INPUTS */}
 
       <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-xl p-5 mt-5">
 
@@ -266,7 +262,7 @@ export default function TravellerBookSolo() {
         >
           <input
             value={pickupText}
-            onChange={(e) => setPickupText(e.target.value)}
+            onChange={(e)=>setPickupText(e.target.value)}
             placeholder="Pickup Location"
             className="w-full border border-green-300 p-3 rounded-lg mb-3"
           />
@@ -278,7 +274,7 @@ export default function TravellerBookSolo() {
         >
           <input
             value={dropText}
-            onChange={(e) => setDropText(e.target.value)}
+            onChange={(e)=>setDropText(e.target.value)}
             placeholder="Destination"
             className="w-full border border-green-300 p-3 rounded-lg"
           />
@@ -300,19 +296,9 @@ export default function TravellerBookSolo() {
 
             {showTraffic && <TrafficLayer />}
 
-            <Marker
-              position={pickupCoords}
-              icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
-            />
+            <Marker position={pickupCoords} />
 
-            {dropCoords && (
-
-              <Marker
-                position={dropCoords}
-                icon="http://maps.google.com/mapfiles/ms/icons/red-dot.png"
-              />
-
-            )}
+            {dropCoords && <Marker position={dropCoords} />}
 
             {directions && (
               <DirectionsRenderer directions={directions} />
@@ -324,20 +310,7 @@ export default function TravellerBookSolo() {
 
       </div>
 
-      {/* TRAFFIC BUTTON */}
-
-      <div className="text-center mt-3">
-
-        <button
-          onClick={() => setShowTraffic(!showTraffic)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg"
-        >
-          {showTraffic ? "Hide Traffic" : "Show Traffic"}
-        </button>
-
-      </div>
-
-      {/* VEHICLE SELECTION */}
+      {/* VEHICLES */}
 
       <div className="max-w-4xl mx-auto grid grid-cols-4 gap-3 mt-5 px-4">
 
@@ -347,10 +320,9 @@ export default function TravellerBookSolo() {
             key={v.id}
             onClick={() => setVehicle(v.id)}
             className={`p-4 rounded-xl border text-center font-semibold
-            ${
-              vehicle === v.id
-                ? "bg-green-600 text-white"
-                : "bg-white border-green-300 text-green-700"
+            ${vehicle === v.id
+              ? "bg-green-600 text-white"
+              : "bg-white border-green-300 text-green-700"
             }`}
           >
 
@@ -363,33 +335,22 @@ export default function TravellerBookSolo() {
 
       </div>
 
-      {/* FARE CARD */}
+      {/* FARE */}
 
-      {distance > 0 && (
+      {distance > 0 && !currentRide && (
 
         <div className="max-w-md mx-auto mt-6 bg-white rounded-xl shadow-lg p-6 text-center">
 
-          <p className="text-gray-600">
-            Distance: <b>{distance} km</b>
-          </p>
-
-          <p className="text-gray-600">
-            ETA: <b>{eta} mins</b>
-          </p>
+          <p>Distance: {distance} km</p>
+          <p>ETA: {eta} mins</p>
 
           <p className="text-3xl font-bold text-green-600 mt-2">
             ₹ {price}
           </p>
 
-          {surge > 1 && (
-            <p className="text-red-500 text-sm mt-1">
-              🔥 Surge pricing active
-            </p>
-          )}
-
           <button
             onClick={bookRide}
-            className="mt-4 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg"
+            className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg"
           >
             Book Ride
           </button>
@@ -398,6 +359,83 @@ export default function TravellerBookSolo() {
 
       )}
 
+      {/* WAITING */}
+
+      {currentRide && !driver && (
+
+        <div className="max-w-md mx-auto mt-6 bg-white p-6 rounded-xl text-center">
+
+          <h2 className="text-xl font-bold text-green-700">
+            Waiting for driver...
+          </h2>
+
+          <p className="text-gray-600 mt-2">
+            Driver will arrive soon
+          </p>
+
+        </div>
+
+      )}
+
+      {/* DRIVER INFO */}
+
+      {driver && (
+
+        <div className="max-w-md mx-auto mt-6 bg-white p-6 rounded-xl text-center">
+
+          <h2 className="text-xl font-bold text-green-700">
+            Driver Accepted 🚗
+          </h2>
+
+          <p className="mt-2 font-semibold">{driver.name}</p>
+
+          <p>{driver.vehicleType}</p>
+
+          <p>{driver.numberPlate}</p>
+
+          <p className="mt-3">Share this OTP with driver</p>
+
+          <div className="text-3xl font-bold text-green-700">
+            {rideCode}
+          </div>
+
+        </div>
+
+      )}
+
+      {/* RIDE STARTED */}
+
+      {rideStarted && (
+
+        <div className="max-w-md mx-auto mt-6 bg-green-100 p-6 rounded-xl text-center">
+
+          <h2 className="text-xl font-bold text-green-700">
+            Ride Started 🚗
+          </h2>
+
+          <button
+            onClick={async () => {
+
+              await fetch(`${API}/complete`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ rideId: currentRide._id })
+              });
+
+              alert("Ride Completed");
+
+            }}
+            className="bg-green-600 text-white px-6 py-2 rounded-lg mt-4"
+          >
+            Complete Ride
+          </button>
+
+        </div>
+
+      )}
+
     </div>
+
   );
+
 }
