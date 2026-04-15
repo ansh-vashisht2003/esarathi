@@ -9,7 +9,7 @@ import {
   completeRide,
   getTravellerRides
 } from "../controllers/rideController.js";
-
+import { getDriverStats } from "../controllers/rideController.js";
 const router = express.Router();
 
 /* TRAVELLER CREATE RIDE */
@@ -32,5 +32,5 @@ router.get("/traveller/:email", getTravellerRides);
 
 /* CANCEL RIDE */
 router.post("/cancel/:rideId", cancelRide);
-
+router.get("/driver/:email", getDriverStats);
 export default router;

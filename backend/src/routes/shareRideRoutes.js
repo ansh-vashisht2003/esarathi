@@ -6,7 +6,8 @@ import {
   joinRide,
   driverCancelRide,
   travellerCancelRide,
-  getTravellerShareRideHistory
+  getTravellerShareRideHistory,
+  getDriverUpcomingShareRides
 
 } from "../controllers/shareRideController.js";
 
@@ -19,7 +20,7 @@ router.get("/search", searchSharedRides);
 router.post("/join", joinRide);
 
 router.post("/driver-cancel/:rideId", driverCancelRide);
-
+router.get("/driver/:email", getDriverUpcomingShareRides);
 router.post("/traveller-cancel/:rideId", travellerCancelRide);
 router.get("/traveller/:email", getTravellerShareRideHistory);
 export default router;

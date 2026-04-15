@@ -264,3 +264,31 @@ export const getTravellerRides = async (req, res) => {
   }
 
 };
+
+export const getDriverStats = async (req, res) => {
+
+  try {
+
+    const { email } = req.params;
+
+    const rides = await Ride.find({
+      "driver.email": email,
+      status: "COMPLETED"
+    }).sort({ completedAt: -1 });
+
+    const totalEarnings = rides.reduce((sum, ride) => {
+      return sum + (ride.fare || 0);
+    }, 0);
+
+    res.json({
+      totalEarnings,
+      rides
+    });
+
+  } catch (err) {
+
+    res.status(500).json({ message: err.message });
+
+  }
+
+};

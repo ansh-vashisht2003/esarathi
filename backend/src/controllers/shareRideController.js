@@ -392,3 +392,27 @@ export const getTravellerShareRideHistory = async (req, res) => {
   }
 
 };
+
+export const getDriverUpcomingShareRides = async (req, res) => {
+
+  try {
+
+    const { email } = req.params;
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const rides = await ShareRide.find({
+      date: { $gte: today }
+    })
+    .populate("driver", "name email vehicleNumber")
+    .sort({ date: 1 });
+
+    res.json(rides);
+
+  } catch (err) {
+
+    res.status(500).json({ message: err.message });
+
+  }
+
+};
