@@ -213,7 +213,7 @@ export const cancelRide = async (req, res) => {
 
   try {
 
-    const { rideId } = req.body;
+    const { rideId } = req.params;   // FIXED HERE
 
     const ride = await Ride.findById(rideId);
 
@@ -232,6 +232,14 @@ export const cancelRide = async (req, res) => {
 
     io.emit("rideCancelled", ride._id);
 
+    if (ride.driver?.email) {
+      io.to(ride.driver.email).emit("rideCancelled", ride._id);
+    }
+
+    if (ride.traveller?.email) {
+      io.to(ride.traveller.email).emit("rideCancelled", ride._id);
+    }
+
     res.json({ message: "Ride cancelled", ride });
 
   } catch (err) {
@@ -241,6 +249,8 @@ export const cancelRide = async (req, res) => {
   }
 
 };
+
+
 
 /* GET TRAVELLER RIDE HISTORY */
 
@@ -264,6 +274,10 @@ export const getTravellerRides = async (req, res) => {
   }
 
 };
+
+
+
+/* DRIVER STATS */
 
 export const getDriverStats = async (req, res) => {
 

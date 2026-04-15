@@ -244,6 +244,37 @@ export default function TravellerBookSolo() {
 
   };
 
+  /* CANCEL RIDE */
+
+  const cancelRide = async () => {
+
+    if (!currentRide) return;
+
+    await fetch(`${API}/cancel/${currentRide._id}`, {
+      method: "POST"
+    });
+
+    alert("Ride Cancelled");
+
+    setCurrentRide(null);
+    setDriver(null);
+    setRideCode("");
+    setRideStarted(false);
+
+    setDirections(null);
+
+    setDistance(0);
+    setEta(0);
+    setPrice(0);
+
+    setPickupCoords(null);
+    setDropCoords(null);
+
+    setPickupText("");
+    setDropText("");
+
+  };
+
   if (!isLoaded) return <div className="p-10">Loading Map...</div>;
 
   return (
@@ -252,14 +283,11 @@ export default function TravellerBookSolo() {
 
       <TravellerNavbar travellerName={travellerName} />
 
-      {/* PICKUP + DESTINATION INPUTS */}
+      {/* PICKUP + DESTINATION */}
 
       <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-xl p-5 mt-5">
 
-        <Autocomplete
-          onLoad={(auto) => setPickupAuto(auto)}
-          onPlaceChanged={pickupChanged}
-        >
+        <Autocomplete onLoad={(auto) => setPickupAuto(auto)} onPlaceChanged={pickupChanged}>
           <input
             value={pickupText}
             onChange={(e)=>setPickupText(e.target.value)}
@@ -268,10 +296,7 @@ export default function TravellerBookSolo() {
           />
         </Autocomplete>
 
-        <Autocomplete
-          onLoad={(auto) => setDropAuto(auto)}
-          onPlaceChanged={dropChanged}
-        >
+        <Autocomplete onLoad={(auto) => setDropAuto(auto)} onPlaceChanged={dropChanged}>
           <input
             value={dropText}
             onChange={(e)=>setDropText(e.target.value)}
@@ -288,11 +313,7 @@ export default function TravellerBookSolo() {
 
         {pickupCoords && (
 
-          <GoogleMap
-            mapContainerStyle={mapContainerStyle}
-            center={pickupCoords}
-            zoom={14}
-          >
+          <GoogleMap mapContainerStyle={mapContainerStyle} center={pickupCoords} zoom={14}>
 
             {showTraffic && <TrafficLayer />}
 
@@ -300,9 +321,7 @@ export default function TravellerBookSolo() {
 
             {dropCoords && <Marker position={dropCoords} />}
 
-            {directions && (
-              <DirectionsRenderer directions={directions} />
-            )}
+            {directions && <DirectionsRenderer directions={directions} />}
 
           </GoogleMap>
 
@@ -373,6 +392,13 @@ export default function TravellerBookSolo() {
             Driver will arrive soon
           </p>
 
+          <button
+            onClick={cancelRide}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg mt-4"
+          >
+            Cancel Ride
+          </button>
+
         </div>
 
       )}
@@ -399,6 +425,13 @@ export default function TravellerBookSolo() {
             {rideCode}
           </div>
 
+          <button
+            onClick={cancelRide}
+            className="bg-red-600 text-white px-6 py-2 rounded-lg mt-4"
+          >
+            Cancel Ride
+          </button>
+
         </div>
 
       )}
@@ -416,27 +449,15 @@ export default function TravellerBookSolo() {
           <button
             onClick={async () => {
 
-  await fetch(`${API}/complete`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ rideId: currentRide._id })
-  });
+              await fetch(`${API}/complete`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ rideId: currentRide._id })
+              });
 
-  alert("Ride Completed");
+              alert("Ride Completed");
 
-  // RESET PAGE STATE
-  setCurrentRide(null);
-  setDriver(null);
-  setRideCode("");
-  setRideStarted(false);
-  setDirections(null);
-  setDistance(0);
-  setEta(0);
-  setPrice(0);
-  setDropCoords(null);
-  setDropText("");
-
-
+              cancelRide();
 
             }}
             className="bg-green-600 text-white px-6 py-2 rounded-lg mt-4"

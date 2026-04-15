@@ -28,7 +28,6 @@ const DriverSoloTrips = () => {
   });
 
   const mapRef = useRef(null);
-  const driverMarkerRef = useRef(null);
 
   const [rides, setRides] = useState([]);
   const [selectedRide, setSelectedRide] = useState(null);
@@ -37,145 +36,45 @@ const DriverSoloTrips = () => {
   const [rideCode, setRideCode] = useState("");
   const [rideStarted, setRideStarted] = useState(false);
 
-  /* -------- SMOOTH DRIVER MOVEMENT -------- */
-
-  const animateMarker = (newLoc) => {
-
-    if (!driverLoc) {
-      setDriverLoc(newLoc);
-      return;
-    }
-
-    const frames = 30;
-    const latStep = (newLoc.lat - driverLoc.lat) / frames;
-    const lngStep = (newLoc.lng - driverLoc.lng) / frames;
-
-    let i = 0;
-
-    const interval = setInterval(() => {
-
-      i++;
-
-      setDriverLoc(prev => ({
-        lat: prev.lat + latStep,
-        lng: prev.lng + lngStep
-      }));
-
-      if (i >= frames) clearInterval(interval);
-
-    }, 50);
-
-  };
-
-  /* ---------------- DRIVER LOCATION ---------------- */
+  /* DRIVER LOCATION */
 
   useEffect(() => {
 
     if (!driver?.email) return;
 
-    if (!navigator.geolocation) {
-      alert("Geolocation not supported");
-      return;
-    }
+    navigator.geolocation.getCurrentPosition((pos) => {
 
-    navigator.geolocation.getCurrentPosition(
+      const loc = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude
+      };
 
-      (pos) => {
+      setDriverLoc(loc);
 
-        const loc = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude
-        };
+      socket.emit("driverOnline", {
+        email: driver.email,
+        lat: loc.lat,
+        lng: loc.lng
+      });
 
-        setDriverLoc(loc);
-
-        socket.emit("driverOnline", {
-          email: driver.email,
-          lat: loc.lat,
-          lng: loc.lng
-        });
-
-      },
-
-      (err) => {
-        console.log("GPS Error", err);
-      },
-
-      { enableHighAccuracy: true }
-
-    );
-
-    const watchId = navigator.geolocation.watchPosition(
-
-      (pos) => {
-
-        const loc = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude
-        };
-
-        animateMarker(loc);
-
-        socket.emit("driverOnline", {
-          email: driver.email,
-          lat: loc.lat,
-          lng: loc.lng
-        });
-
-      },
-
-      (err) => {
-        console.log("GPS Error", err);
-      },
-
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
-
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
+    });
 
   }, [driver?.email]);
 
 
-
-  /* ---------------- AUTO CENTER MAP ---------------- */
-
-  useEffect(() => {
-
-    if (mapRef.current && driverLoc) {
-      mapRef.current.panTo(driverLoc);
-    }
-
-  }, [driverLoc]);
-
-
-
-  /* ---------------- LOAD RIDES ---------------- */
+  /* LOAD RIDES */
 
   const loadRides = async () => {
 
-    try {
+    const res = await fetch(`${API}/searching`);
+    const data = await res.json();
 
-      const res = await fetch(`${API}/searching`);
-      const data = await res.json();
-
-      setRides(data);
-
-    } catch (err) {
-
-      console.log(err);
-
-    }
+    setRides(data);
 
   };
 
 
-
-  /* ---------------- SOCKET CONNECTION ---------------- */
+  /* SOCKET */
 
   useEffect(() => {
 
@@ -190,23 +89,39 @@ const DriverSoloTrips = () => {
     });
 
     socket.on("rideAccepted", (rideId) => {
-      setRides(prev =>
-        prev.filter(r => r._id !== rideId)
-      );
+      setRides(prev => prev.filter(r => r._id !== rideId));
+    });
+
+    /* traveller cancelled */
+
+    socket.on("rideCancelled", (rideId) => {
+
+      if (selectedRide && selectedRide._id === rideId) {
+
+        alert("Traveller cancelled the ride");
+
+        setSelectedRide(null);
+        setRideStarted(false);
+        setRideCode("");
+        setDirections(null);
+
+        loadRides();
+      }
+
     });
 
     return () => {
 
       socket.off("newRideRequest");
       socket.off("rideAccepted");
+      socket.off("rideCancelled");
 
     };
 
-  }, [driver?.email]);
+  }, [driver?.email, selectedRide]);
 
 
-
-  /* ---------------- ROUTE DRAWING ---------------- */
+  /* ROUTE */
 
   useEffect(() => {
 
@@ -229,25 +144,31 @@ const DriverSoloTrips = () => {
         travelMode: "DRIVING"
       },
       (result, status) => {
-        if (status === "OK") {
-          setDirections(result);
-        }
+        if (status === "OK") setDirections(result);
       }
     );
 
   }, [driverLoc, selectedRide, rideStarted, isLoaded]);
 
 
+  /* RESET MAP WHEN RIDE CLEARS */
 
-  /* ---------------- ACCEPT RIDE ---------------- */
+  useEffect(() => {
+
+    if (!selectedRide) {
+      setDirections(null);
+    }
+
+  }, [selectedRide]);
+
+
+  /* ACCEPT RIDE */
 
   const acceptRide = async (rideId) => {
 
     const res = await fetch(`${API}/accept`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         rideId,
         driverEmail: driver.email
@@ -261,27 +182,20 @@ const DriverSoloTrips = () => {
       return;
     }
 
-    alert("Ride Accepted");
-
     setSelectedRide(data);
     setRides([]);
 
   };
 
 
-
-  /* ---------------- START RIDE ---------------- */
+  /* START RIDE */
 
   const startRide = async () => {
 
     const res = await fetch(`${API}/start`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        rideCode
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rideCode })
     });
 
     const data = await res.json();
@@ -300,9 +214,27 @@ const DriverSoloTrips = () => {
   };
 
 
+  /* DRIVER CANCEL */
+
+  const cancelRide = async () => {
+
+    if (!selectedRide) return;
+
+    await fetch(`${API}/cancel/${selectedRide._id}`, {
+      method: "POST"
+    });
+
+    setSelectedRide(null);
+    setRideStarted(false);
+    setRideCode("");
+    setDirections(null);
+
+    loadRides();
+
+  };
+
 
   if (!isLoaded) return <div className="p-10">Loading Map...</div>;
-
 
 
   return (
@@ -315,16 +247,6 @@ const DriverSoloTrips = () => {
 
       <div className="relative flex-grow" style={{ height: "45vh" }}>
 
-        {!driverLoc && (
-
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
-
-            <p className="animate-pulse">📍 Locating driver...</p>
-
-          </div>
-
-        )}
-
         <GoogleMap
           mapContainerStyle={mapContainerStyle}
           center={driverLoc || { lat: 28.6139, lng: 77.2090 }}
@@ -333,16 +255,13 @@ const DriverSoloTrips = () => {
         >
 
           {driverLoc && (
-
             <Marker
               position={driverLoc}
               icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
             />
-
           )}
 
           {selectedRide && !rideStarted && (
-
             <Marker
               position={{
                 lat: selectedRide.pickup.lat,
@@ -350,18 +269,16 @@ const DriverSoloTrips = () => {
               }}
               label="Pickup"
             />
-
           )}
 
           {directions && (
-
             <DirectionsRenderer directions={directions} />
-
           )}
 
         </GoogleMap>
 
       </div>
+
 
       {/* DRIVER PANEL */}
 
@@ -390,7 +307,6 @@ const DriverSoloTrips = () => {
             {!rideStarted && (
 
               <>
-
                 <input
                   value={rideCode}
                   onChange={(e)=>setRideCode(e.target.value)}
@@ -405,6 +321,12 @@ const DriverSoloTrips = () => {
                   Start Ride
                 </button>
 
+                <button
+                  onClick={cancelRide}
+                  className="bg-red-600 text-white w-full mt-3 p-2 rounded"
+                >
+                  Cancel Ride
+                </button>
               </>
 
             )}
