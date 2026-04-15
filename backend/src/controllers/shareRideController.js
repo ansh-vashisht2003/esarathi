@@ -368,3 +368,27 @@ export const travellerCancelRide = async (req, res) => {
   }
 
 };
+
+export const getTravellerShareRideHistory = async (req, res) => {
+
+  try {
+
+    const { email } = req.params;
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const rides = await ShareRide.find({
+      date: { $lt: today }   // ride date already finished
+    })
+      .populate("driver", "name vehicleNumber")
+      .sort({ date: -1 });
+
+    res.json(rides);
+
+  } catch (err) {
+
+    res.status(500).json({ message: err.message });
+
+  }
+
+};

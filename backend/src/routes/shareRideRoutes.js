@@ -5,7 +5,9 @@ import {
   searchSharedRides,
   joinRide,
   driverCancelRide,
-  travellerCancelRide
+  travellerCancelRide,
+  getTravellerShareRideHistory
+
 } from "../controllers/shareRideController.js";
 
 const router = express.Router();
@@ -19,5 +21,5 @@ router.post("/join", joinRide);
 router.post("/driver-cancel/:rideId", driverCancelRide);
 
 router.post("/traveller-cancel/:rideId", travellerCancelRide);
-
+router.get("/traveller/:email", getTravellerShareRideHistory);
 export default router;

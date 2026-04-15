@@ -175,9 +175,23 @@ alert("Error changing password");
 
 };
 
-/* RIDE CARD (UBER STYLE) */
+/* UBER STYLE RIDE CARD */
 
-const RideCard = ({ ride }) => (
+const RideCard = ({ ride }) => {
+
+const pickup =
+ride.pickup?.address || ride.pickup?.city || "Unknown";
+
+const drop =
+ride.drop?.address || ride.drop?.city || "Unknown";
+
+const price =
+ride.fare || ride.price || ride.totalPrice || 0;
+
+const status =
+ride.status || "COMPLETED";
+
+return (
 
 <div className="bg-white shadow rounded-xl p-4 border hover:shadow-md transition">
 
@@ -186,7 +200,7 @@ const RideCard = ({ ride }) => (
 <div>
 
 <p className="font-semibold text-green-700">
-{ride.pickup?.address}
+{pickup}
 </p>
 
 <p className="text-sm text-gray-500">
@@ -194,7 +208,7 @@ const RideCard = ({ ride }) => (
 </p>
 
 <p className="font-semibold text-gray-700">
-{ride.drop?.address}
+{drop}
 </p>
 
 </div>
@@ -202,7 +216,7 @@ const RideCard = ({ ride }) => (
 <div className="text-right">
 
 <p className="text-green-600 font-bold">
-₹ {ride.fare || ride.price}
+₹ {price}
 </p>
 
 <p className="text-xs text-gray-500">
@@ -210,7 +224,7 @@ const RideCard = ({ ride }) => (
 </p>
 
 <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
-{ride.status}
+{status}
 </span>
 
 </div>
@@ -220,6 +234,8 @@ const RideCard = ({ ride }) => (
 </div>
 
 );
+
+};
 
 return (
 
@@ -244,10 +260,10 @@ className="w-36 h-36 rounded-full object-cover border-4 border-green-500 shadow"
 <button
 onClick={() => setShowPicModal(true)}
 className="absolute bottom-2 right-2 bg-green-600 text-white p-2 rounded-full shadow hover:bg-green-700 transition"
-
 >
 
 <FaCamera />
+
 </button>
 
 </div>
@@ -269,10 +285,11 @@ Role: Traveller
 <button
 onClick={() => setShowPasswordModal(true)}
 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-
 >
 
-<FaLock /> Change Password </button>
+<FaLock /> Change Password
+
+</button>
 
 <button
 onClick={() => {
@@ -280,10 +297,11 @@ localStorage.removeItem("traveller");
 navigate("/choose-role");
 }}
 className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-
 >
 
-<FaSignOutAlt /> Logout </button>
+<FaSignOutAlt /> Logout
+
+</button>
 
 </div>
 
@@ -313,7 +331,8 @@ No solo rides yet
 
 <div className="space-y-3">
 
-{soloRides.map((ride) => ( <RideCard key={ride._id} ride={ride} />
+{soloRides.map((ride) => (
+<RideCard key={ride._id} ride={ride} />
 ))}
 
 </div>
@@ -340,7 +359,8 @@ No shared rides yet
 
 <div className="space-y-3">
 
-{shareRides.map((ride) => ( <RideCard key={ride._id} ride={ride} />
+{shareRides.map((ride) => (
+<RideCard key={ride._id} ride={ride} />
 ))}
 
 </div>
@@ -389,18 +409,20 @@ handleProfilePicChange(e);
 <button
 onClick={() => setShowPicModal(false)}
 className="w-1/2 py-2 rounded-lg bg-gray-200"
-
 >
 
-Cancel </button>
+Cancel
+
+</button>
 
 <button
 disabled={uploading}
 className="w-1/2 py-2 rounded-lg bg-green-600 text-white"
-
 >
 
-{uploading ? "Uploading..." : "Done"} </button>
+{uploading ? "Uploading..." : "Done"}
+
+</button>
 
 </div>
 
@@ -443,20 +465,22 @@ className="w-full px-3 py-2 border rounded-lg"
 <button
 type="submit"
 className="w-full py-2 bg-green-600 text-white rounded-lg"
-
 >
 
-Update Password </button>
+Update Password
+
+</button>
 
 </form>
 
 <button
 onClick={() => setShowPasswordModal(false)}
 className="w-full mt-3 py-2 bg-gray-200 rounded-lg"
-
 >
 
-Cancel </button>
+Cancel
+
+</button>
 
 </div>
 
