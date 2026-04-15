@@ -1,155 +1,243 @@
 import Ride from "../models/Ride.js";
 import Driver from "../models/Driver.js";
 
-/* =========================
-   GENERATE UNIQUE RIDE CODE
-========================= */
-const generateRideCode = () => {
-  return "ESR-" + Math.floor(100000 + Math.random() * 900000);
-};
+/* CREATE RIDE */
 
-/* =========================
-   CREATE RIDE (Traveller)
-========================= */
 export const createRide = async (req, res) => {
-  try {
-    const rideCode = generateRideCode();
 
-    const ride = await Ride.create({
-      ...req.body,
+  try {
+
+    const {
+      traveller,
+      pickup,
+      drop,
+      vehicleType,
+      distance,
+      eta,
+      fare
+    } = req.body;
+
+    const rideCode = "ESR-" + Math.floor(100000 + Math.random() * 900000);
+
+    const ride = new Ride({
       rideCode,
-      status: "SEARCHING",
+      traveller,
+      pickup,
+      drop,
+      vehicleType,
+      distance,
+      eta,
+      fare,
+      status: "SEARCHING"
     });
 
-    res.status(201).json(ride);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
+    await ride.save();
 
-/* =========================
-   GET SEARCHING RIDES (Driver)
-========================= */
-export const getSearchingRides = async (req, res) => {
-  try {
-    const rides = await Ride.find({ status: "SEARCHING" });
-    res.json(rides);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-/* =========================
-   DRIVER ACCEPT RIDE ✅ FIXED
-========================= */
-export const acceptRide = async (req, res) => {
-  try {
-    const { rideId, driverEmail } = req.body;
-
-    console.log("🔥 Accept Ride Request:", rideId, driverEmail);
-
-    // ✅ find driver from DB
-    const fullDriver = await Driver.findOne({ email: driverEmail });
-
-    if (!fullDriver) {
-      console.log("❌ Driver not found in DB");
-      return res.status(404).json({ message: "Driver not found" });
-    }
-
-    // ✅ update ride with driver info
-    const ride = await Ride.findByIdAndUpdate(
-      rideId,
-      {
-        status: "ACCEPTED",
-        driver: {
-          name: fullDriver.name,
-          email: fullDriver.email,
-          phone: fullDriver.phone,
-          profilePic: fullDriver.profilePic,
-          numberPlate: fullDriver.numberPlate,
-          vehicleType: fullDriver.vehicleType,
-        },
-        acceptedAt: new Date(),
-      },
-      { new: true }
-    );
-
-    if (!ride) {
-      return res.status(404).json({ message: "Ride not found" });
-    }
-
-    console.log("✅ Driver added to ride:", ride.driver);
-
-    // ✅ send driver details to traveller
     const io = req.app.get("io");
 
-    io.to(ride.traveller.email).emit("rideAccepted", {
-      rideId: ride._id,
-      rideCode: ride.rideCode,
-      driver: ride.driver,
-    });
-
-    console.log("📡 Sent driver to traveller:", ride.traveller.email);
+    io.emit("newRideRequest", ride);
 
     res.json(ride);
+
   } catch (err) {
-    console.error("❌ acceptRide error:", err);
+
     res.status(500).json({ message: err.message });
+
   }
+
 };
 
-/* =========================
-   START RIDE (Driver enters code)
-========================= */
-export const startRide = async (req, res) => {
+
+
+/* GET SEARCHING RIDES */
+
+export const getSearchingRides = async (req, res) => {
+
   try {
+
+    const rides = await Ride.find({
+      status: "SEARCHING"
+    }).sort({ createdAt: -1 });
+
+    res.json(rides);
+
+  } catch (err) {
+
+    res.status(500).json({ message: err.message });
+
+  }
+
+};
+
+
+
+/* DRIVER ACCEPT */
+
+export const acceptRide = async (req, res) => {
+
+  try {
+
+    const { rideId, driverEmail } = req.body;
+
+    const driver = await Driver.findOne({ email: driverEmail });
+
+    if (!driver)
+      return res.json({ message: "Driver not found" });
+
+    const ride = await Ride.findOneAndUpdate(
+
+      {
+        _id: rideId,
+        status: "SEARCHING"
+      },
+
+      {
+        status: "ACCEPTED",
+
+        driver: {
+          name: driver.name,
+          email: driver.email,
+          phone: driver.phone,
+          profilePic: driver.profilePic,
+          numberPlate: driver.numberPlate,
+          vehicleType: driver.vehicleType
+        },
+
+        acceptedAt: new Date()
+      },
+
+      { new: true }
+
+    );
+
+    if (!ride)
+      return res.json({
+        message: "Ride already accepted by another driver"
+      });
+
+    const io = req.app.get("io");
+
+    io.emit("rideAccepted", ride._id);
+
+    io.to(ride.traveller.email).emit("rideDriverAssigned", {
+      rideId: ride._id,
+      rideCode: ride.rideCode,
+      driver: ride.driver
+    });
+
+    res.json(ride);
+
+  } catch (err) {
+
+    res.status(500).json({ message: err.message });
+
+  }
+
+};
+
+
+
+/* START RIDE */
+
+export const startRide = async (req, res) => {
+
+  try {
+
     const { rideCode } = req.body;
 
-    const ride = await Ride.findOne({ rideCode });
+    const ride = await Ride.findOne({
+      rideCode,
+      status: "ACCEPTED"
+    });
 
-    if (!ride) {
-      return res.status(404).json({ message: "Invalid Ride Code" });
-    }
+    if (!ride)
+      return res.json({ message: "Invalid OTP" });
 
     ride.status = "STARTED";
     ride.startedAt = new Date();
+
     await ride.save();
 
     const io = req.app.get("io");
 
-    io.to(ride.traveller.email).emit("rideStarted", {
-      rideId: ride._id,
-      rideCode: ride.rideCode,
-    });
+    io.to(ride.traveller.email).emit("rideStarted", ride);
 
-    res.json({ message: "Ride started successfully", ride });
+    res.json({ message: "Ride started", ride });
+
   } catch (err) {
+
     res.status(500).json({ message: err.message });
+
   }
+
 };
 
-/* =========================
-   CANCEL RIDE
-========================= */
-export const cancelRide = async (req, res) => {
+
+
+/* COMPLETE RIDE */
+
+export const completeRide = async (req, res) => {
+
   try {
-    const { rideCode } = req.body;
 
-    const ride = await Ride.findOne({ rideCode });
+    const { rideId } = req.body;
 
-    if (!ride) {
-      return res.status(404).json({ message: "Ride not found" });
-    }
+    const ride = await Ride.findOne({
+      _id: rideId,
+      status: "STARTED"
+    });
+
+    if (!ride)
+      return res.json({ message: "Ride not started yet" });
+
+    ride.status = "COMPLETED";
+    ride.completedAt = new Date();
+
+    await ride.save();
+
+    res.json({ message: "Ride completed", ride });
+
+  } catch (err) {
+
+    res.status(500).json({ message: err.message });
+
+  }
+
+};
+
+
+
+/* CANCEL RIDE */
+
+export const cancelRide = async (req, res) => {
+
+  try {
+
+    const { rideId } = req.body;
+
+    const ride = await Ride.findById(rideId);
+
+    if (!ride)
+      return res.json({ message: "Ride not found" });
+
+    if (ride.status === "COMPLETED")
+      return res.json({ message: "Ride already completed" });
 
     ride.status = "CANCELLED";
     ride.cancelledAt = new Date();
+
     await ride.save();
 
     const io = req.app.get("io");
-    io.emit("rideCancelled", { rideCode });
 
-    res.json({ message: "Ride cancelled successfully", ride });
+    io.emit("rideCancelled", ride._id);
+
+    res.json({ message: "Ride cancelled", ride });
+
   } catch (err) {
+
     res.status(500).json({ message: err.message });
+
   }
+
 };

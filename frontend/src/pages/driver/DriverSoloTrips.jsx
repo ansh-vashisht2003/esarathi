@@ -43,11 +43,9 @@ const DriverSoloTrips = () => {
     if (!driver?.email) return;
 
     if (!navigator.geolocation) {
-      alert("Geolocation not supported by your browser");
+      alert("Geolocation not supported");
       return;
     }
-
-    /* 1️⃣ Get location instantly */
 
     navigator.geolocation.getCurrentPosition(
 
@@ -71,7 +69,7 @@ const DriverSoloTrips = () => {
       },
 
       (err) => {
-        console.error("Initial GPS error:", err);
+        console.log("GPS Error", err);
       },
 
       {
@@ -79,8 +77,6 @@ const DriverSoloTrips = () => {
       }
 
     );
-
-    /* 2️⃣ Track movement continuously */
 
     const watchId = navigator.geolocation.watchPosition(
 
@@ -104,7 +100,7 @@ const DriverSoloTrips = () => {
       },
 
       (err) => {
-        console.error("GPS Error:", err);
+        console.log("GPS Error", err);
       },
 
       {
@@ -146,13 +142,15 @@ const DriverSoloTrips = () => {
 
     } catch (err) {
 
-      console.error("Ride load error:", err);
+      console.log(err);
 
     }
 
   };
 
 
+
+  /* ---------------- SOCKET CONNECTION ---------------- */
 
   useEffect(() => {
 
@@ -163,16 +161,31 @@ const DriverSoloTrips = () => {
     loadRides();
 
     socket.on("newRideRequest", (ride) => {
-      setRides((prev) => [ride, ...prev]);
+
+      setRides(prev => [ride, ...prev]);
+
     });
 
-    return () => socket.off("newRideRequest");
+    socket.on("rideAccepted", (rideId) => {
+
+      setRides(prev =>
+        prev.filter(r => r._id !== rideId)
+      );
+
+    });
+
+    return () => {
+
+      socket.off("newRideRequest");
+      socket.off("rideAccepted");
+
+    };
 
   }, [driver?.email]);
 
 
 
-  /* ---------------- ROUTE ---------------- */
+  /* ---------------- ROUTE DRAWING ---------------- */
 
   useEffect(() => {
 
@@ -189,11 +202,13 @@ const DriverSoloTrips = () => {
       : { lat: selectedRide.drop.lat, lng: selectedRide.drop.lng };
 
     directionsService.route(
+
       {
         origin,
         destination,
         travelMode: "DRIVING"
       },
+
       (result, status) => {
 
         if (status === "OK") {
@@ -201,6 +216,7 @@ const DriverSoloTrips = () => {
         }
 
       }
+
     );
 
   }, [driverLoc, selectedRide, rideStarted, isLoaded]);
@@ -212,23 +228,34 @@ const DriverSoloTrips = () => {
   const acceptRide = async (rideId) => {
 
     const res = await fetch(`${API}/accept`, {
+
       method: "POST",
+
       headers: {
         "Content-Type": "application/json"
       },
+
       body: JSON.stringify({
         rideId,
         driverEmail: driver.email
       })
+
     });
 
     const data = await res.json();
+
+    if (data.message) {
+
+      alert(data.message);
+      return;
+
+    }
 
     alert("Ride Accepted");
 
     setSelectedRide(data);
 
-    loadRides();
+    setRides([]);
 
   };
 
@@ -239,18 +266,22 @@ const DriverSoloTrips = () => {
   const startRide = async () => {
 
     const res = await fetch(`${API}/start`, {
+
       method: "POST",
+
       headers: {
         "Content-Type": "application/json"
       },
+
       body: JSON.stringify({
         rideCode
       })
+
     });
 
     const data = await res.json();
 
-    if (data.message) {
+    if (data.message === "Ride started") {
 
       alert("Ride Started");
 
@@ -258,7 +289,7 @@ const DriverSoloTrips = () => {
 
     } else {
 
-      alert("Invalid Code");
+      alert("Invalid OTP");
 
     }
 
@@ -330,7 +361,7 @@ const DriverSoloTrips = () => {
 
 
 
-      {/* UI PANEL */}
+      {/* DRIVER PANEL */}
 
       <div className="bg-white rounded-t-3xl -mt-8 p-6 shadow-xl">
 
@@ -338,19 +369,31 @@ const DriverSoloTrips = () => {
 
           <div>
 
-            <p>Traveller: {selectedRide.traveller?.name}</p>
-            <p>Pickup: {selectedRide.pickup?.address}</p>
-            <p>Drop: {selectedRide.drop?.address}</p>
-            <p>Fare: ₹{selectedRide.fare}</p>
+            <p className="font-semibold">
+              Traveller: {selectedRide.traveller?.name}
+            </p>
+
+            <p>
+              Pickup: {selectedRide.pickup?.address}
+            </p>
+
+            <p>
+              Drop: {selectedRide.drop?.address}
+            </p>
+
+            <p>
+              Fare: ₹{selectedRide.fare}
+            </p>
 
             {!rideStarted && (
 
               <>
+
                 <input
                   value={rideCode}
                   onChange={(e)=>setRideCode(e.target.value)}
                   placeholder="Enter OTP"
-                  className="border p-2 w-full mt-3"
+                  className="border p-2 w-full mt-3 rounded"
                 />
 
                 <button
@@ -359,6 +402,7 @@ const DriverSoloTrips = () => {
                 >
                   Start Ride
                 </button>
+
               </>
 
             )}
@@ -369,14 +413,19 @@ const DriverSoloTrips = () => {
 
           rides.map((ride)=>(
 
-            <div key={ride._id} className="border p-3 mb-3">
+            <div key={ride._id} className="border p-3 mb-3 rounded">
 
-              <p>{ride.pickup.address}</p>
-              <p>{ride.drop.address}</p>
+              <p className="font-semibold">
+                {ride.pickup.address}
+              </p>
+
+              <p>
+                {ride.drop.address}
+              </p>
 
               <button
                 onClick={()=>acceptRide(ride._id)}
-                className="bg-black text-white w-full mt-2 p-2"
+                className="bg-black text-white w-full mt-2 p-2 rounded"
               >
                 Accept Ride
               </button>
