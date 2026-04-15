@@ -95,9 +95,16 @@ const AddDriver = () => {
 
             {/* DRIVER DETAILS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
-              <p><b>DOB:</b> {new Date(driver.dob).toLocaleDateString()}</p>
-              <p><b>Aadhaar:</b> {driver.aadhaar}</p>
-              <p><b>Number Plate:</b> {driver.numberPlate}</p>
+              <p>
+                <b>DOB:</b>{" "}
+                {new Date(driver.dob).toLocaleDateString()}
+              </p>
+              <p>
+                <b>Aadhaar:</b> {driver.aadhaar}
+              </p>
+              <p>
+                <b>Number Plate:</b> {driver.numberPlate}
+              </p>
               <p>
                 <b>Status:</b>{" "}
                 <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-700 font-semibold">
@@ -114,6 +121,48 @@ const AddDriver = () => {
                 alt="Car"
                 className="rounded-xl w-full max-h-64 object-cover border shadow"
               />
+            </div>
+
+            {/* AI VERIFICATION */}
+            <div className="mt-5 bg-gray-100 border rounded-lg p-4">
+              <h4 className="font-semibold mb-2">
+                🤖 AI Vehicle Verification
+              </h4>
+
+              <p>
+                Detected Plate:
+                <b className="ml-2">
+                  {driver.aiCheck?.detectedPlate || "Not detected"}
+                </b>
+              </p>
+
+              <p>
+                Plate Matches Registration:
+                <span
+                  className={`font-semibold ml-2 ${
+                    driver.aiCheck?.plateMatches
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {driver.aiCheck?.plateMatches ? "YES" : "NO"}
+                </span>
+              </p>
+
+              <p>
+                Electric Vehicle Plate:
+                <span
+                  className={`font-semibold ml-2 ${
+                    driver.aiCheck?.electricPlate
+                      ? "text-green-600"
+                      : "text-gray-600"
+                  }`}
+                >
+                  {driver.aiCheck?.electricPlate
+                    ? "YES (Green Plate)"
+                    : "NO"}
+                </span>
+              </p>
             </div>
 
             {/* ACTION BUTTONS */}
